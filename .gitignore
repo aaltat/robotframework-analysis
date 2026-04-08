@@ -38,3 +38,8 @@ MANIFEST
 
 # macOS
 .DS_Store
+
+# RF logs
+output.xml
+log.html
+report.html
