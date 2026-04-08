@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=75.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robotframework-analysis"
+version = "0.1.0"
+description = "Use LLM to analyze Robot Framework test suites, logs from SUT and changelogs to find out what is going on and how to fix it."
+readme = "README.md"
+requires-python = ">=3.12.11"
+dependencies = [
+    "pydantic-ai>=1.72.0",
+    "robotframework>=7.4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "approvaltests>=15.3.2",
+    "mypy>=1.15.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.11.4",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=robotframework_analysis --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["robotframework_analysis"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = ["src"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["robot", "robot.*"]
+ignore_missing_imports = true
