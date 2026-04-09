@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import shutil
+import warnings
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -11,6 +13,7 @@ from robot.result import ExecutionResult
 
 _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
+_UNSAFE_RE = re.compile(r"[^A-Za-z0-9]+")
 
 
 @dataclass
@@ -61,10 +64,48 @@ def _collect_failed_tests(suite: Any) -> list[FailedTest]:
     return failed
 
 
+def _sanitize_name(s: str) -> str:
+    return _UNSAFE_RE.sub("_", s).strip("_")
+
+
+def _build_detail_filename(
+    group_num: int, suite_name: str, test_name: str, running_num: int
+) -> str:
+    return (
+        f"group_{group_num:03d}"
+        f"_{_sanitize_name(suite_name)}"
+        f"_{_sanitize_name(test_name)}"
+        f"_{running_num:03d}.md"
+    )
+
+
+def _render_detail_markdown(ft: FailedTest) -> str:
+    return f"# {ft.suite_name} {ft.test_name} error\n\n{ft.message}\n"
+
+
+def _prepare_output_dir(output_dir: Path) -> None:
+    if output_dir.exists():
+        try:
+            shutil.rmtree(output_dir)
+        except Exception as exc:
+            warnings.warn(
+                f"Could not delete {output_dir}: {exc}. Please delete manually.",
+                stacklevel=2,
+            )
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        warnings.warn(
+            f"Could not create {output_dir}: {exc}. Please create manually.",
+            stacklevel=2,
+        )
+
+
 def render_summary_markdown(
     output_xml: str | Path,
     path_normalizer: Callable[[Path], str] | None = None,
     time_normalizer: Callable[[str, str], str] | None = None,
+    project_root: Path | None = None,
 ) -> str:
     output_path = Path(output_xml)
     if not output_path.exists():
@@ -97,8 +138,19 @@ def render_summary_markdown(
         for ft in failed_tests:
             groups[_error_group_key(ft.message)].append(ft)
 
+        detail_dir: Path | None = None
+        if project_root is not None:
+            detail_dir = project_root / ".robotframework_analysis"
+            _prepare_output_dir(detail_dir)
+
         for i, (key, tests) in enumerate(groups.items(), start=1):
             prefix_label = f": {key[0]}" if key[0] else ""
+            if detail_dir is not None:
+                table_header = "| Suite Name | Test Name | Path | More Details |"
+                table_sep = "| --- | --- | --- | --- |"
+            else:
+                table_header = "| Suite Name | Test Name | Path |"
+                table_sep = "| --- | --- | --- |"
             lines += [
                 "",
                 f"# Error Group {i}{prefix_label}",
@@ -106,11 +158,25 @@ def render_summary_markdown(
                 _truncate_error(tests[0].message),
                 "",
                 f"## Group {i} Tests",
-                "| Suite Name | Test Name | Path |",
-                "| --- | --- | --- |",
+                table_header,
+                table_sep,
             ]
-            for ft in tests:
+            for j, ft in enumerate(tests, start=1):
                 path_str = path_normalizer(ft.source) if path_normalizer else str(ft.source)
-                lines.append(f"| {ft.suite_name} | {ft.test_name} | {path_str} |")
+                if detail_dir is not None:
+                    filename = _build_detail_filename(i, ft.suite_name, ft.test_name, j)
+                    detail_file = detail_dir / filename
+                    try:
+                        detail_file.write_text(_render_detail_markdown(ft), encoding="utf-8")
+                    except Exception as exc:
+                        warnings.warn(f"Could not write {detail_file}: {exc}.", stacklevel=2)
+                    detail_str = (
+                        path_normalizer(detail_file) if path_normalizer else str(detail_file)
+                    )
+                    lines.append(
+                        f"| {ft.suite_name} | {ft.test_name} | {path_str} | {detail_str} |"
+                    )
+                else:
+                    lines.append(f"| {ft.suite_name} | {ft.test_name} | {path_str} |")
 
     return "\n".join(lines) + "\n"
