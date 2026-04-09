@@ -21,9 +21,8 @@ class FailedTest:
     message: str
 
 
-def _format_duration(milliseconds: int) -> str:
-    seconds = milliseconds // 1000
-    return f"{seconds}s"
+def _format_start_end(starttime: str, endtime: str) -> str:
+    return f"{starttime} / {endtime}"
 
 
 def _error_group_key(message: str) -> tuple[str, str]:
@@ -65,6 +64,7 @@ def _collect_failed_tests(suite: Any) -> list[FailedTest]:
 def render_summary_markdown(
     output_xml: str | Path,
     path_normalizer: Callable[[Path], str] | None = None,
+    time_normalizer: Callable[[str, str], str] | None = None,
 ) -> str:
     output_path = Path(output_xml)
     if not output_path.exists():
@@ -75,6 +75,12 @@ def render_summary_markdown(
     totals = result.statistics.total
     suite_name = result.suite.name
 
+    start_end = (
+        time_normalizer(result.suite.starttime, result.suite.endtime)
+        if time_normalizer
+        else _format_start_end(result.suite.starttime, result.suite.endtime)
+    )
+
     lines = [
         f"# {suite_name} Test Summary",
         "",
@@ -82,7 +88,7 @@ def render_summary_markdown(
         f"- Passed: {totals.passed}",
         f"- Failed: {totals.failed}",
         f"- Skipped: {totals.skipped}",
-        f"- Duration: {_format_duration(result.suite.elapsedtime)}",
+        f"- Start / end: {start_end}",
     ]
 
     failed_tests = _collect_failed_tests(result.suite)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import robot
@@ -10,7 +11,7 @@ from robotframework_analysis.report_markdown import (
     FailedTest,
     _collect_failed_tests,
     _error_group_key,
-    _format_duration,
+    _format_start_end,
     _truncate_error,
     render_summary_markdown,
 )
@@ -20,6 +21,13 @@ _WORKSPACE_ROOT = Path(__file__).parent.parent
 
 def _path_normalizer(p: Path) -> str:
     return str(p.relative_to(_WORKSPACE_ROOT))
+
+
+_FIXED_DATETIME = "20260101 00:00:00.000"
+
+
+def _time_normalizer(starttime: str, endtime: str) -> str:
+    return f"{_FIXED_DATETIME} / {_FIXED_DATETIME}"
 
 
 def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
@@ -37,7 +45,9 @@ def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
 def test_renders_summary_markdown(tmp_path: Path) -> None:
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
 
-    markdown = render_summary_markdown(output_xml, path_normalizer=_path_normalizer)
+    markdown = render_summary_markdown(
+        output_xml, path_normalizer=_path_normalizer, time_normalizer=_time_normalizer
+    )
 
     verify(markdown, options=Options().for_file.with_extension(".md"))
 
@@ -45,7 +55,9 @@ def test_renders_summary_markdown(tmp_path: Path) -> None:
 def test_renders_error_groups_markdown(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
 
-    markdown = render_summary_markdown(output_xml, path_normalizer=_path_normalizer)
+    markdown = render_summary_markdown(
+        output_xml, path_normalizer=_path_normalizer, time_normalizer=_time_normalizer
+    )
 
     verify(markdown, options=Options().for_file.with_extension(".md"))
 
@@ -100,15 +112,30 @@ def test_truncate_error_exactly_300_chars_unchanged() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Unit tests — _format_duration
+# Unit tests — _format_start_end
 # ---------------------------------------------------------------------------
 
 
-def test_format_duration_rounds_down_to_seconds() -> None:
-    assert _format_duration(1999) == "1s"
+def test_format_start_end_produces_correct_string() -> None:
+    assert _format_start_end("20260408 23:09:12.153", "20260408 23:09:12.999") == (
+        "20260408 23:09:12.153 / 20260408 23:09:12.999"
+    )
+
+
+def test_start_end_in_rendered_markdown_contains_real_datetime(tmp_path: Path) -> None:
+    _DATETIME_RE = re.compile(r"\d{8} \d{2}:\d{2}:\d{2}\.\d{3}")
+    output_xml = _run_fixture("summary_suite.robot", tmp_path)
+
+    markdown = render_summary_markdown(output_xml)
+
+    start_end_lines = [line for line in markdown.splitlines() if "Start / end" in line]
+    assert len(start_end_lines) == 1
+    matches = _DATETIME_RE.findall(start_end_lines[0])
+    assert len(matches) == 2, f"Expected two datetimes in: {start_end_lines[0]}"
 
 
 # ---------------------------------------------------------------------------
+
 # Unit tests — _collect_failed_tests
 # ---------------------------------------------------------------------------
 

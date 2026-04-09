@@ -4,7 +4,7 @@
 - Passed: 1
 - Failed: 1
 - Skipped: 1
-- Duration: 0s
+- Start / end: 20260101 00:00:00.000 / 20260101 00:00:00.000
 
 # Error Group 1
 
