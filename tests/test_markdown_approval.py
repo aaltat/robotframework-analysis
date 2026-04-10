@@ -4,9 +4,9 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-import robot
 from approvaltests import verify
 from approvaltests.core.options import Options
+from robot import run as robot_run  # type: ignore[attr-defined]
 
 from robotframework_analysis.report_markdown import (
     FailedTest,
@@ -14,6 +14,7 @@ from robotframework_analysis.report_markdown import (
     _collect_failed_tests,
     _error_group_key,
     _format_start_end,
+    _render_detail_markdown,
     _sanitize_name,
     _truncate_error,
     render_summary_markdown,
@@ -37,16 +38,21 @@ def _make_path_normalizer(project_root: Path) -> Callable[[Path], str]:
 
 
 _FIXED_DATETIME = "20260101 00:00:00.000"
+_LOG_TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+")
 
 
 def _time_normalizer(starttime: str, endtime: str) -> str:
     return f"{_FIXED_DATETIME} / {_FIXED_DATETIME}"
 
 
+def _normalize_log_timestamps(text: str) -> str:
+    return _LOG_TIMESTAMP_RE.sub("timestamp", text)
+
+
 def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
     suite_file = Path(__file__).parent / "fixtures" / fixture_name
     output_xml = tmp_path / "output.xml"
-    robot.run(str(suite_file), output=str(output_xml), log="NONE", report="NONE")
+    robot_run(str(suite_file), output=str(output_xml), log="NONE", report="NONE", loglevel="TRACE")
     return output_xml
 
 
@@ -99,7 +105,8 @@ def test_detail_file_summary_suite_failing(tmp_path: Path) -> None:
     )
     detail_file = tmp_path / ".robotframework_analysis" / "group_001_Summary_Suite_Failing_001.md"
     verify(
-        detail_file.read_text(encoding="utf-8"), options=Options().for_file.with_extension(".md")
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
     )
 
 
@@ -118,7 +125,8 @@ def test_detail_file_error_groups_database_error_one(tmp_path: Path) -> None:
         / "group_001_Error_Groups_Suite_Database_Error_One_001.md"
     )
     verify(
-        detail_file.read_text(encoding="utf-8"), options=Options().for_file.with_extension(".md")
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
     )
 
 
@@ -137,7 +145,8 @@ def test_detail_file_error_groups_database_error_two(tmp_path: Path) -> None:
         / "group_001_Error_Groups_Suite_Database_Error_Two_002.md"
     )
     verify(
-        detail_file.read_text(encoding="utf-8"), options=Options().for_file.with_extension(".md")
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
     )
 
 
@@ -154,7 +163,28 @@ def test_detail_file_error_groups_login_timeout(tmp_path: Path) -> None:
         tmp_path / ".robotframework_analysis" / "group_002_Error_Groups_Suite_Login_Timeout_001.md"
     )
     verify(
-        detail_file.read_text(encoding="utf-8"), options=Options().for_file.with_extension(".md")
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
+    )
+
+
+def test_detail_file_error_groups_printed_failure(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    normalize = _make_path_normalizer(tmp_path)
+    render_summary_markdown(
+        output_xml,
+        path_normalizer=normalize,
+        time_normalizer=_time_normalizer,
+        project_root=tmp_path,
+    )
+    detail_file = (
+        tmp_path
+        / ".robotframework_analysis"
+        / "group_003_Error_Groups_Suite_Printed_Failure_001.md"
+    )
+    verify(
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
     )
 
 
@@ -280,6 +310,37 @@ def test_collect_failed_tests_path_contains_fixture_filename(tmp_path: Path) -> 
     assert all("error_groups_suite.robot" in str(ft.source) for ft in failed)
 
 
+def test_collect_failed_tests_includes_only_failing_keyword_logs(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    import robot.result as rr
+
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
+
+    login_timeout = next(ft for ft in failed if ft.test_name == "Login Timeout")
+    normalized = [_normalize_log_timestamps(line) for line in login_timeout.log_messages]
+    assert normalized == [
+        "timestamp INFO: log messages goes here 1",
+        "timestamp DEBUG: log messages goes here 2",
+        "timestamp WARN: log messages goes here 3",
+        "timestamp TRACE: log messages goes here 4",
+    ]
+
+
+def test_collect_failed_tests_includes_print_output_in_log_section(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    import robot.result as rr
+
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
+
+    printed_failure = next(ft for ft in failed if ft.test_name == "Printed Failure")
+    normalized = [_normalize_log_timestamps(line) for line in printed_failure.log_messages]
+    assert normalized == [
+        "timestamp INFO: printed output goes here 1\nprinted output goes here 2",
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Unit tests — render_summary_markdown edge cases
 # ---------------------------------------------------------------------------
@@ -376,7 +437,7 @@ def test_project_root_creates_correct_number_of_detail_files(tmp_path: Path) -> 
     render_summary_markdown(output_xml, project_root=tmp_path)
 
     detail_files = list((tmp_path / ".robotframework_analysis").glob("*.md"))
-    assert len(detail_files) == 3
+    assert len(detail_files) == 4
 
 
 def test_project_root_cleans_old_files_on_rerun(tmp_path: Path) -> None:
@@ -388,3 +449,11 @@ def test_project_root_cleans_old_files_on_rerun(tmp_path: Path) -> None:
     render_summary_markdown(output_xml, project_root=tmp_path)
 
     assert not (detail_dir / "old_file.md").exists()
+
+
+def test_render_detail_markdown_omits_log_section_when_logs_missing() -> None:
+    ft = FailedTest("Summary Suite", "Failing", Path("suite.robot"), "boom", [])
+
+    markdown = _normalize_log_timestamps(_render_detail_markdown(ft))
+
+    assert markdown == "# Summary Suite Failing error\n\nboom\n"

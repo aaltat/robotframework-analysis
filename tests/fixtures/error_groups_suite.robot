@@ -9,4 +9,6 @@ Database Error One
 Database Error Two
     Raise Value Error
 Login Timeout
-    Raise Type Error
+    Raise Logged Type Error
+Printed Failure
+    Raise Printed Assertion Error

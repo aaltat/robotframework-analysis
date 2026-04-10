@@ -1,5 +1,7 @@
 """Test fixture library for raising different exception types."""
 
+from robot.api import logger
+
 
 def raise_value_error() -> None:
     """Raise a ValueError with a realistic message."""
@@ -30,6 +32,15 @@ def raise_type_error() -> None:
     raise TypeError(long_message)
 
 
+def raise_logged_type_error() -> None:
+    """Emit logger messages before raising a TypeError."""
+    logger.info("log messages goes here 1")
+    logger.debug("log messages goes here 2")
+    logger.warn("log messages goes here 3")
+    logger.trace("log messages goes here 4")
+    raise_type_error()
+
+
 def raise_assertion_error() -> None:
     """Raise an AssertionError with a detailed message."""
     raise AssertionError(
@@ -37,3 +48,10 @@ def raise_assertion_error() -> None:
         "indicating insufficient permissions. The user account may not "
         "have the required role or scope to access this resource"
     )
+
+
+def raise_printed_assertion_error() -> None:
+    """Emit print output before raising an AssertionError."""
+    print("printed output goes here 1")
+    print("printed output goes here 2")
+    raise_assertion_error()

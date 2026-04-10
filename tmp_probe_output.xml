@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.2 (Python 3.12.11 on darwin)" generated="2026-04-09T23:17:46.510175" rpa="false" schemaversion="5">
+<suite id="s1" name="Error Groups Suite" source="/Users/tatuaalto/workspace/robotframework-analysis/tests/fixtures/error_groups_suite.robot">
+<test id="s1-t1" name="Passing" line="5">
+<kw name="No Operation" owner="BuiltIn">
+<msg time="2026-04-09T23:17:46.521986" level="TRACE">Arguments: [  ]</msg>
+<msg time="2026-04-09T23:17:46.522014" level="TRACE">Return: None</msg>
+<doc>Does absolutely nothing.</doc>
+<status status="PASS" start="2026-04-09T23:17:46.521920" elapsed="0.000116"/>
+</kw>
+<status status="PASS" start="2026-04-09T23:17:46.521688" elapsed="0.000399"/>
+</test>
+<test id="s1-t2" name="Database Error One" line="7">
+<kw name="Raise Value Error" owner="test_library">
+<msg time="2026-04-09T23:17:46.522251" level="TRACE">Arguments: [  ]</msg>
+<msg time="2026-04-09T23:17:46.522294" level="FAIL">ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</msg>
+<msg time="2026-04-09T23:17:46.522413" level="DEBUG">Traceback (most recent call last):
+  File "/Users/tatuaalto/workspace/robotframework-analysis/tests/fixtures/test_library.py", line 6, in raise_value_error
+    raise ValueError(
+ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</msg>
+<doc>Raise a ValueError with a realistic message.</doc>
+<status status="FAIL" start="2026-04-09T23:17:46.522231" elapsed="0.000193">ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</status>
+</kw>
+<status status="FAIL" start="2026-04-09T23:17:46.522147" elapsed="0.000336">ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</status>
+</test>
+<test id="s1-t3" name="Database Error Two" line="9">
+<kw name="Raise Value Error" owner="test_library">
+<msg time="2026-04-09T23:17:46.522627" level="TRACE">Arguments: [  ]</msg>
+<msg time="2026-04-09T23:17:46.522654" level="FAIL">ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</msg>
+<msg time="2026-04-09T23:17:46.522692" level="DEBUG">Traceback (most recent call last):
+  File "/Users/tatuaalto/workspace/robotframework-analysis/tests/fixtures/test_library.py", line 6, in raise_value_error
+    raise ValueError(
+ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</msg>
+<doc>Raise a ValueError with a realistic message.</doc>
+<status status="FAIL" start="2026-04-09T23:17:46.522612" elapsed="0.000089">ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</status>
+</kw>
+<status status="FAIL" start="2026-04-09T23:17:46.522538" elapsed="0.000209">ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity</status>
+</test>
+<test id="s1-t4" name="Login Timeout" line="11">
+<kw name="Raise Type Error" owner="test_library">
+<msg time="2026-04-09T23:17:46.522875" level="TRACE">Arguments: [  ]</msg>
+<msg time="2026-04-09T23:17:46.522900" level="FAIL">TypeError: TypeError: expected argument of type str or bytes-like object, not NoneType. Function signature requires (name: str, age: int, email: str, phone: str, address: str, city: str, state: str, zip_code: str, country: str, company: str, job_title: str, department: str, manager: str, salary: int, hire_date: str, termination_date: str, is_active: bool, is_admin: bool) but received NoneType for parameter 'name'. This is typically caused by passing None where a string is expected. To fix this, ensure all required string parameters are properly initialized before calling this function. You may want to check your data source, API response, or configuration file to ensure values are not null. The full traceback shows the call originated from line 42 in process_user_data() which was called from setup_database() at line 18.</msg>
+<msg time="2026-04-09T23:17:46.522953" level="DEBUG">Traceback (most recent call last):
+  File "/Users/tatuaalto/workspace/robotframework-analysis/tests/fixtures/test_library.py", line 30, in raise_type_error
+    raise TypeError(long_message)
+TypeError: TypeError: expected argument of type str or bytes-like object, not NoneType. Function signature requires (name: str, age: int, email: str, phone: str, address: str, city: str, state: str, zip_code: str, country: str, company: str, job_title: str, department: str, manager: str, salary: int, hire_date: str, termination_date: str, is_active: bool, is_admin: bool) but received NoneType for parameter 'name'. This is typically caused by passing None where a string is expected. To fix this, ensure all required string parameters are properly initialized before calling this function. You may want to check your data source, API response, or configuration file to ensure values are not null. The full traceback shows the call originated from line 42 in process_user_data() which was called from setup_database() at line 18.</msg>
+<doc>Raise a TypeError with a very long message.</doc>
+<status status="FAIL" start="2026-04-09T23:17:46.522861" elapsed="0.000102">TypeError: TypeError: expected argument of type str or bytes-like object, not NoneType. Function signature requires (name: str, age: int, email: str, phone: str, address: str, city: str, state: str, zip_code: str, country: str, company: str, job_title: str, department: str, manager: str, salary: int, hire_date: str, termination_date: str, is_active: bool, is_admin: bool) but received NoneType for parameter 'name'. This is typically caused by passing None where a string is expected. To fix this, ensure all required string parameters are properly initialized before calling this function. You may want to check your data source, API response, or configuration file to ensure values are not null. The full traceback shows the call originated from line 42 in process_user_data() which was called from setup_database() at line 18.</status>
+</kw>
+<status status="FAIL" start="2026-04-09T23:17:46.522795" elapsed="0.000271">TypeError: TypeError: expected argument of type str or bytes-like object, not NoneType. Function signature requires (name: str, age: int, email: str, phone: str, address: str, city: str, state: str, zip_code: str, country: str, company: str, job_title: str, department: str, manager: str, salary: int, hire_date: str, termination_date: str, is_active: bool, is_admin: bool) but received NoneType for parameter 'name'. This is typically caused by passing None where a string is expected. To fix this, ensure all required string parameters are properly initialized before calling this function. You may want to check your data source, API response, or configuration file to ensure values are not null. The full traceback shows the call originated from line 42 in process_user_data() which was called from setup_database() at line 18.</status>
+</test>
+<status status="FAIL" start="2026-04-09T23:17:46.510676" elapsed="0.012526"/>
+</suite>
+<statistics>
+<total>
+<stat pass="1" fail="3" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="Error Groups Suite" id="s1" pass="1" fail="3" skip="0">Error Groups Suite</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

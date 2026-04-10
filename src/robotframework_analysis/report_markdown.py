@@ -22,6 +22,7 @@ class FailedTest:
     test_name: str
     source: Path
     message: str
+    log_messages: list[str]
 
 
 def _format_start_end(starttime: str, endtime: str) -> str:
@@ -51,17 +52,64 @@ def _collect_failed_tests(suite: Any) -> list[FailedTest]:
     for test in suite.tests:
         if test.status == "FAIL":
             source = Path(str(suite.source)) if suite.source else Path("")
+            failing_keyword = _find_failing_keyword(test)
             failed.append(
                 FailedTest(
                     suite_name=suite.name,
                     test_name=test.name,
                     source=source,
                     message=test.message,
+                    log_messages=_collect_log_messages(failing_keyword, test.message),
                 )
             )
     for sub_suite in suite.suites:
         failed.extend(_collect_failed_tests(sub_suite))
     return failed
+
+
+def _find_failing_keyword(container: Any) -> Any | None:
+    for item in getattr(container, "body", []):
+        if getattr(item, "type", None) != "KEYWORD":
+            continue
+        if getattr(item, "status", None) != "FAIL":
+            continue
+        nested = _find_failing_keyword(item)
+        return nested if nested is not None else item
+    return None
+
+
+def _format_log_message(message: Any) -> str | None:
+    level = getattr(message, "level", "")
+    text = getattr(message, "message", "")
+    timestamp = getattr(message, "timestamp", "")
+
+    if level == "FAIL":
+        return None
+    if text.startswith("Arguments: ["):
+        return None
+    if text.startswith("Return: "):
+        return None
+    if text.startswith("Traceback (most recent call last):"):
+        return None
+
+    return f"{timestamp} {level}: {text}"
+
+
+def _collect_log_messages(keyword: Any | None, failure_message: str) -> list[str]:
+    if keyword is None:
+        return []
+
+    logs: list[str] = []
+    for item in getattr(keyword, "body", []):
+        if getattr(item, "type", None) != "MESSAGE":
+            continue
+        formatted = _format_log_message(item)
+        if formatted is None:
+            continue
+        if getattr(item, "message", "") == failure_message:
+            continue
+        logs.append(formatted)
+    return logs
 
 
 def _sanitize_name(s: str) -> str:
@@ -80,7 +128,10 @@ def _build_detail_filename(
 
 
 def _render_detail_markdown(ft: FailedTest) -> str:
-    return f"# {ft.suite_name} {ft.test_name} error\n\n{ft.message}\n"
+    lines = [f"# {ft.suite_name} {ft.test_name} error", "", ft.message]
+    if ft.log_messages:
+        lines += ["", "# Log message", *ft.log_messages]
+    return "\n".join(lines) + "\n"
 
 
 def _prepare_output_dir(output_dir: Path) -> None:

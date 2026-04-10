@@ -1,8 +1,8 @@
 # Error Groups Suite Test Summary
 
-- Total: 4
+- Total: 5
 - Passed: 1
-- Failed: 3
+- Failed: 4
 - Skipped: 0
 - Start / end: 20260101 00:00:00.000 / 20260101 00:00:00.000
 
@@ -24,3 +24,12 @@ TypeError: TypeError: expected argument of type str or bytes-like object, not No
 | Suite Name | Test Name | Path | More Details |
 | --- | --- | --- | --- |
 | Error Groups Suite | Login Timeout | tests/fixtures/error_groups_suite.robot | .robotframework_analysis/group_002_Error_Groups_Suite_Login_Timeout_001.md |
+
+# Error Group 3
+
+assertion failed: expected status code 200 but got 403, indicating insufficient permissions. The user account may not have the required role or scope to access this resource
+
+## Group 3 Tests
+| Suite Name | Test Name | Path | More Details |
+| --- | --- | --- | --- |
+| Error Groups Suite | Printed Failure | tests/fixtures/error_groups_suite.robot | .robotframework_analysis/group_003_Error_Groups_Suite_Printed_Failure_001.md |
