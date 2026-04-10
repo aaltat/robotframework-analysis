@@ -1,8 +1,8 @@
 # Error Groups Suite Test Summary
 
-- Total: 5
+- Total: 7
 - Passed: 1
-- Failed: 4
+- Failed: 6
 - Skipped: 0
 - Start / end: 20260101 00:00:00.000 / 20260101 00:00:00.000
 
@@ -33,3 +33,23 @@ assertion failed: expected status code 200 but got 403, indicating insufficient 
 | Suite Name | Test Name | Path | More Details |
 | --- | --- | --- | --- |
 | Error Groups Suite | Printed Failure | tests/fixtures/error_groups_suite.robot | .robotframework_analysis/group_003_Error_Groups_Suite_Printed_Failure_001.md |
+
+# Error Group 4
+
+Setup failed:
+setup failed while preparing test preconditions
+
+## Group 4 Tests
+| Suite Name | Test Name | Path | More Details |
+| --- | --- | --- | --- |
+| Error Groups Suite | Setup Failure Case | tests/fixtures/error_groups_suite.robot | .robotframework_analysis/group_004_Error_Groups_Suite_Setup_Failure_Case_001.md |
+
+# Error Group 5
+
+Teardown failed:
+teardown failed while cleaning test resources
+
+## Group 5 Tests
+| Suite Name | Test Name | Path | More Details |
+| --- | --- | --- | --- |
+| Error Groups Suite | Teardown Failure Case | tests/fixtures/error_groups_suite.robot | .robotframework_analysis/group_005_Error_Groups_Suite_Teardown_Failure_Case_001.md |

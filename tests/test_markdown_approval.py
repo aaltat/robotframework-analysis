@@ -188,6 +188,46 @@ def test_detail_file_error_groups_printed_failure(tmp_path: Path) -> None:
     )
 
 
+def test_detail_file_error_groups_setup_failure_case(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    normalize = _make_path_normalizer(tmp_path)
+    render_summary_markdown(
+        output_xml,
+        path_normalizer=normalize,
+        time_normalizer=_time_normalizer,
+        project_root=tmp_path,
+    )
+    detail_file = (
+        tmp_path
+        / ".robotframework_analysis"
+        / "group_004_Error_Groups_Suite_Setup_Failure_Case_001.md"
+    )
+    verify(
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
+    )
+
+
+def test_detail_file_error_groups_teardown_failure_case(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    normalize = _make_path_normalizer(tmp_path)
+    render_summary_markdown(
+        output_xml,
+        path_normalizer=normalize,
+        time_normalizer=_time_normalizer,
+        project_root=tmp_path,
+    )
+    detail_file = (
+        tmp_path
+        / ".robotframework_analysis"
+        / "group_005_Error_Groups_Suite_Teardown_Failure_Case_001.md"
+    )
+    verify(
+        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        options=Options().for_file.with_extension(".md"),
+    )
+
+
 # ---------------------------------------------------------------------------
 
 
@@ -327,6 +367,24 @@ def test_collect_failed_tests_includes_only_failing_keyword_logs(tmp_path: Path)
     ]
 
 
+def test_collect_failed_tests_contains_keyword_leaf_for_nested_failure(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    import robot.result as rr
+
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
+
+    login_timeout = next(ft for ft in failed if ft.test_name == "Login Timeout")
+    leaf = "\n".join(login_timeout.keyword_leaf_lines)
+    assert "Keyword One    PASS" in leaf
+    assert "Keyword Two    PASS" in leaf
+    assert "Keyword Three    FAIL" in leaf
+    assert "Sub Keyword 3.1    FAIL" in leaf
+    assert "Sub Keyword 3.1.1    FAIL" in leaf
+    assert "Raise Logged Type Error    FAIL" in leaf
+    assert "Error: TypeError: TypeError: expected argument of type st…" in leaf
+
+
 def test_collect_failed_tests_includes_print_output_in_log_section(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     import robot.result as rr
@@ -339,6 +397,32 @@ def test_collect_failed_tests_includes_print_output_in_log_section(tmp_path: Pat
     assert normalized == [
         "timestamp INFO: printed output goes here 1\nprinted output goes here 2",
     ]
+
+
+def test_collect_failed_tests_uses_test_setup_branch_when_setup_fails(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    import robot.result as rr
+
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
+
+    setup_failure = next(ft for ft in failed if ft.test_name == "Setup Failure Case")
+    leaf = "\n".join(setup_failure.keyword_leaf_lines)
+    assert "└── Test Setup" in leaf
+    assert "SETUP    FAIL" in leaf
+
+
+def test_collect_failed_tests_uses_test_teardown_branch_when_teardown_fails(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    import robot.result as rr
+
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
+
+    teardown_failure = next(ft for ft in failed if ft.test_name == "Teardown Failure Case")
+    leaf = "\n".join(teardown_failure.keyword_leaf_lines)
+    assert "└── Test Teardown" in leaf
+    assert "TEARDOWN    FAIL" in leaf
 
 
 # ---------------------------------------------------------------------------
@@ -437,7 +521,7 @@ def test_project_root_creates_correct_number_of_detail_files(tmp_path: Path) -> 
     render_summary_markdown(output_xml, project_root=tmp_path)
 
     detail_files = list((tmp_path / ".robotframework_analysis").glob("*.md"))
-    assert len(detail_files) == 4
+    assert len(detail_files) == 6
 
 
 def test_project_root_cleans_old_files_on_rerun(tmp_path: Path) -> None:
@@ -452,8 +536,24 @@ def test_project_root_cleans_old_files_on_rerun(tmp_path: Path) -> None:
 
 
 def test_render_detail_markdown_omits_log_section_when_logs_missing() -> None:
-    ft = FailedTest("Summary Suite", "Failing", Path("suite.robot"), "boom", [])
+    ft = FailedTest("Summary Suite", "Failing", Path("suite.robot"), "boom", [], [])
 
     markdown = _normalize_log_timestamps(_render_detail_markdown(ft))
 
     assert markdown == "# Summary Suite Failing error\n\nboom\n"
+
+
+def test_render_detail_markdown_includes_keyword_leaf_section() -> None:
+    ft = FailedTest(
+        "Summary Suite",
+        "Failing",
+        Path("suite.robot"),
+        "boom",
+        [],
+        ["Failing", "└── Test Body", "    └── Fail    FAIL", "        Error: boom"],
+    )
+
+    markdown = _render_detail_markdown(ft)
+
+    assert "# Keyword leaf" in markdown
+    assert "└── Test Body" in markdown

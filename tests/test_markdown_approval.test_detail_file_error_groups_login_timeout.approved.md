@@ -7,3 +7,17 @@ timestamp INFO: log messages goes here 1
 timestamp DEBUG: log messages goes here 2
 timestamp WARN: log messages goes here 3
 timestamp TRACE: log messages goes here 4
+
+# Keyword leaf
+Login Timeout
+└── Test Body
+    ├── Keyword One    PASS
+    ├── Keyword Two    PASS
+    └── Keyword Three    FAIL
+        └── Sub Keyword 3.1    FAIL
+            └── IF/ELSE ROOT    FAIL
+                └── IF    FAIL
+                    └── Sub Keyword 3.1.1    FAIL
+                        ├── No Operation    PASS
+                        └── Raise Logged Type Error    FAIL
+                            Error: TypeError: TypeError: expected argument of type st…

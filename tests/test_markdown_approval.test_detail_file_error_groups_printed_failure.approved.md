@@ -5,3 +5,9 @@ assertion failed: expected status code 200 but got 403, indicating insufficient 
 # Log message
 timestamp INFO: printed output goes here 1
 printed output goes here 2
+
+# Keyword leaf
+Printed Failure
+└── Test Body
+    └── Raise Printed Assertion Error    FAIL
+        Error: assertion failed: expected status code 200 but got…

@@ -55,3 +55,13 @@ def raise_printed_assertion_error() -> None:
     print("printed output goes here 1")
     print("printed output goes here 2")
     raise_assertion_error()
+
+
+def raise_setup_failure() -> None:
+    """Raise a setup-specific runtime error."""
+    raise RuntimeError("setup failed while preparing test preconditions")
+
+
+def raise_teardown_failure() -> None:
+    """Raise a teardown-specific runtime error."""
+    raise RuntimeError("teardown failed while cleaning test resources")

@@ -23,6 +23,14 @@ class FailedTest:
     source: Path
     message: str
     log_messages: list[str]
+    keyword_leaf_lines: list[str]
+
+
+@dataclass
+class FailingBranch:
+    phase_label: str
+    top_level_nodes: list[Any]
+    failing_path: list[Any]
 
 
 def _format_start_end(starttime: str, endtime: str) -> str:
@@ -49,10 +57,14 @@ def _truncate_error(message: str) -> str:
 
 def _collect_failed_tests(suite: Any) -> list[FailedTest]:
     failed: list[FailedTest] = []
+    suite_branch = _find_suite_failing_branch(suite)
+
     for test in suite.tests:
         if test.status == "FAIL":
             source = Path(str(suite.source)) if suite.source else Path("")
-            failing_keyword = _find_failing_keyword(test)
+            test_branch = _find_test_failing_branch(test)
+            branch = test_branch or suite_branch
+            failing_keyword = branch.failing_path[-1] if branch else _find_failing_keyword(test)
             failed.append(
                 FailedTest(
                     suite_name=suite.name,
@@ -60,6 +72,7 @@ def _collect_failed_tests(suite: Any) -> list[FailedTest]:
                     source=source,
                     message=test.message,
                     log_messages=_collect_log_messages(failing_keyword, test.message),
+                    keyword_leaf_lines=_build_keyword_leaf_lines(test.name, branch),
                 )
             )
     for sub_suite in suite.suites:
@@ -76,6 +89,167 @@ def _find_failing_keyword(container: Any) -> Any | None:
         nested = _find_failing_keyword(item)
         return nested if nested is not None else item
     return None
+
+
+def _is_executed(item: Any) -> bool:
+    return getattr(item, "status", None) != "NOT RUN"
+
+
+def _iter_executed_nodes(body: Any) -> list[Any]:
+    nodes: list[Any] = []
+    for item in body:
+        if getattr(item, "type", None) == "MESSAGE":
+            continue
+        if not _is_executed(item):
+            continue
+        nodes.append(item)
+    return nodes
+
+
+def _find_first_failing_path(nodes: list[Any]) -> list[Any] | None:
+    for node in nodes:
+        if getattr(node, "status", None) != "FAIL":
+            continue
+        child_nodes = _iter_executed_nodes(getattr(node, "body", []))
+        child_path = _find_first_failing_path(child_nodes)
+        if child_path:
+            return [node, *child_path]
+        return [node]
+    return None
+
+
+def _find_branch_in_nodes(phase_label: str, nodes: list[Any]) -> FailingBranch | None:
+    executed = _iter_executed_nodes(nodes)
+    path = _find_first_failing_path(executed)
+    if not path:
+        return None
+
+    top_level_nodes: list[Any] = []
+    root = path[0]
+    for node in executed:
+        top_level_nodes.append(node)
+        if node is root:
+            break
+
+    return FailingBranch(
+        phase_label=phase_label, top_level_nodes=top_level_nodes, failing_path=path
+    )
+
+
+def _find_test_failing_branch(test: Any) -> FailingBranch | None:
+    setup = getattr(test, "setup", None)
+    if setup and _is_executed(setup):
+        branch = _find_branch_in_nodes("Test Setup", [setup])
+        if branch:
+            return branch
+
+    branch = _find_branch_in_nodes("Test Body", list(getattr(test, "body", [])))
+    if branch:
+        return branch
+
+    teardown = getattr(test, "teardown", None)
+    if teardown and _is_executed(teardown):
+        branch = _find_branch_in_nodes("Test Teardown", [teardown])
+        if branch:
+            return branch
+
+    return None
+
+
+def _find_suite_failing_branch(suite: Any) -> FailingBranch | None:
+    setup = getattr(suite, "setup", None)
+    if setup and _is_executed(setup):
+        branch = _find_branch_in_nodes("Suite Setup", [setup])
+        if branch:
+            return branch
+
+    teardown = getattr(suite, "teardown", None)
+    if teardown and _is_executed(teardown):
+        branch = _find_branch_in_nodes("Suite Teardown", [teardown])
+        if branch:
+            return branch
+
+    return None
+
+
+def _node_label(node: Any) -> str:
+    node_type = str(getattr(node, "type", ""))
+    if node_type == "KEYWORD":
+        name = str(getattr(node, "name", "") or "").strip()
+        if name:
+            return name
+    return node_type
+
+
+def _short_error(message: str, limit: int = 50) -> str:
+    first_line = message.splitlines()[0] if message else ""
+    if len(first_line) <= limit:
+        return first_line
+    return first_line[:limit] + "…"
+
+
+def _render_tree_line(prefix: str, is_last: bool, text: str) -> str:
+    branch = "└── " if is_last else "├── "
+    return f"{prefix}{branch}{text}"
+
+
+def _render_node_line(node: Any, failing_leaf: Any) -> str:
+    label = _node_label(node)
+    status = str(getattr(node, "status", ""))
+    return f"{label}    {status}" if status else label
+
+
+def _build_keyword_leaf_lines(test_name: str, branch: FailingBranch | None) -> list[str]:
+    if branch is None:
+        return []
+
+    lines = [test_name, _render_tree_line("", True, branch.phase_label)]
+    phase_prefix = "    "
+
+    failing_leaf = branch.failing_path[-1]
+    parent = branch.failing_path[-2] if len(branch.failing_path) >= 2 else None
+    parent_children = (
+        _iter_executed_nodes(getattr(parent, "body", []))
+        if parent is not None
+        else branch.top_level_nodes
+    )
+
+    def in_path(node: Any) -> bool:
+        return any(node is path_node for path_node in branch.failing_path)
+
+    def next_path_node(current: Any) -> Any | None:
+        for idx, path_node in enumerate(branch.failing_path[:-1]):
+            if current is path_node:
+                return branch.failing_path[idx + 1]
+        return None
+
+    def render_children(prefix: str, nodes: list[Any]) -> list[str]:
+        out: list[str] = []
+        for idx, node in enumerate(nodes):
+            is_last = idx == len(nodes) - 1
+            out.append(_render_tree_line(prefix, is_last, _render_node_line(node, failing_leaf)))
+
+            next_prefix = prefix + ("    " if is_last else "│   ")
+            if node is failing_leaf:
+                msg = _short_error(str(getattr(node, "message", "")))
+                if msg:
+                    out.append(f"{next_prefix}Error: {msg}")
+                continue
+
+            if node is parent:
+                out.extend(render_children(next_prefix, parent_children))
+                continue
+
+            if in_path(node):
+                child_nodes = _iter_executed_nodes(getattr(node, "body", []))
+                path_child = next_path_node(node)
+                filtered = [child for child in child_nodes if child is path_child]
+                out.extend(render_children(next_prefix, filtered))
+
+        return out
+
+    lines.extend(render_children(phase_prefix, branch.top_level_nodes))
+    return lines
 
 
 def _format_log_message(message: Any) -> str | None:
@@ -131,6 +305,8 @@ def _render_detail_markdown(ft: FailedTest) -> str:
     lines = [f"# {ft.suite_name} {ft.test_name} error", "", ft.message]
     if ft.log_messages:
         lines += ["", "# Log message", *ft.log_messages]
+    if ft.keyword_leaf_lines:
+        lines += ["", "# Keyword leaf", *ft.keyword_leaf_lines]
     return "\n".join(lines) + "\n"
 
 
