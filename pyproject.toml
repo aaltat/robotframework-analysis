@@ -7,10 +7,10 @@ name = "robotframework-analysis"
 version = "0.1.0"
 description = "Use LLM to analyze Robot Framework test suites, logs from SUT and changelogs to find out what is going on and how to fix it."
 readme = "README.md"
-requires-python = ">=3.12.11"
+requires-python = ">=3.10"
 dependencies = [
     "pydantic-ai>=1.72.0",
-    "robotframework>=7.4.2",
+    "robotframework>=7.1.1",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +29,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
@@ -47,7 +47,7 @@ show_missing = true
 skip_covered = false
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 mypy_path = ["src"]
 strict = true
 
