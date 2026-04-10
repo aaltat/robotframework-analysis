@@ -3,8 +3,12 @@
 Setup failed:
 setup failed while preparing test preconditions
 
+# Origin
+- Test file: tests/fixtures/error_groups_suite.robot
+- Failing library: test_library
+
 # Keyword leaf
-Setup Failure Case
+tests/fixtures/error_groups_suite.robot.Setup Failure Case
 └── Test Setup
-    └── SETUP    FAIL
+    └── test_library.SETUP    FAIL
         Error: setup failed while preparing test preconditions

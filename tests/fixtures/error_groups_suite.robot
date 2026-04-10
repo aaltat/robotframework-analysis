@@ -1,5 +1,6 @@
 *** Settings ***
 Library    test_library.py
+Resource    error_groups_keywords.resource
 
 *** Test Cases ***
 Passing
@@ -20,23 +21,3 @@ Setup Failure Case
 Teardown Failure Case
     No Operation
     [Teardown]    Raise Teardown Failure
-
-*** Keywords ***
-Keyword One
-    No Operation
-
-Keyword Two
-    No Operation
-
-Keyword Three
-    Sub Keyword 3.1
-
-Sub Keyword 3.1
-    IF    ${True}
-        Sub Keyword 3.1.1
-    END
-
-Sub Keyword 3.1.1
-    No Operation
-    Raise Logged Type Error
-    No Operation

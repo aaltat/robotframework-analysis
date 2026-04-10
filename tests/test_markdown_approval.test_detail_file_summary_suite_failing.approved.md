@@ -2,8 +2,12 @@
 
 boom
 
+# Origin
+- Test file: tests/fixtures/summary_suite.robot
+- Failing library: BuiltIn
+
 # Keyword leaf
-Failing
+tests/fixtures/summary_suite.robot.Failing
 └── Test Body
-    └── Fail    FAIL
+    └── BuiltIn.Fail    FAIL
         Error: boom

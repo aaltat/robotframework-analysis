@@ -442,49 +442,27 @@ def test_collect_failed_tests_uses_test_teardown_branch_when_teardown_fails(tmp_
 # ---------------------------------------------------------------------------
 
 
-def test_collect_failed_tests_handles_suite_without_source() -> None:
-    from unittest.mock import MagicMock
+def test_collect_failed_tests_uses_robot_suite_models_only(tmp_path: Path) -> None:
+    output_xml = _run_fixture("summary_suite.robot", tmp_path)
+    import robot.result as rr
 
-    mock_test = MagicMock()
-    mock_test.status = "FAIL"
-    mock_test.name = "My Test"
-    mock_test.message = "Some error"
-
-    mock_suite = MagicMock()
-    mock_suite.source = None
-    mock_suite.name = "My Suite"
-    mock_suite.tests = [mock_test]
-    mock_suite.suites = []
-
-    failed = _collect_failed_tests(mock_suite)
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
 
     assert len(failed) == 1
-    assert failed[0].source == Path("")
+    assert failed[0].suite_name == "Summary Suite"
+    assert failed[0].test_name == "Failing"
 
 
-def test_collect_failed_tests_recurses_into_sub_suites() -> None:
-    from unittest.mock import MagicMock
+def test_collect_failed_tests_visits_nested_suites(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    import robot.result as rr
 
-    mock_test = MagicMock()
-    mock_test.status = "FAIL"
-    mock_test.name = "Child Test"
-    mock_test.message = "Error in child"
+    result = rr.ExecutionResult(str(output_xml))
+    failed = _collect_failed_tests(result.suite)
 
-    child_suite = MagicMock()
-    child_suite.source = Path("/some/child.robot")
-    child_suite.name = "Child Suite"
-    child_suite.tests = [mock_test]
-    child_suite.suites = []
-
-    parent_suite = MagicMock()
-    parent_suite.tests = []
-    parent_suite.suites = [child_suite]
-
-    failed = _collect_failed_tests(parent_suite)
-
-    assert len(failed) == 1
-    assert failed[0].suite_name == "Child Suite"
-    assert failed[0].test_name == "Child Test"
+    assert any(ft.suite_name == "Error Groups Suite" for ft in failed)
+    assert any(ft.test_name == "Printed Failure" for ft in failed)
 
 
 def test_render_summary_markdown_raises_when_output_is_missing(tmp_path: Path) -> None:
@@ -552,7 +530,9 @@ def test_render_detail_markdown_omits_log_section_when_logs_missing() -> None:
 
     markdown = _normalize_log_timestamps(_render_detail_markdown(ft))
 
-    assert markdown == "# Summary Suite Failing error\n\nboom\n"
+    assert (
+        markdown == "# Summary Suite Failing error\n\nboom\n\n# Origin\n- Test file: suite.robot\n"
+    )
 
 
 def test_render_detail_markdown_includes_keyword_leaf_section() -> None:

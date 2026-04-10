@@ -11,8 +11,13 @@ timestamp WARN: log messages goes here 3
 timestamp WARN: <removed html>
 timestamp TRACE: log messages goes here 4
 
+# Origin
+- Test file: tests/fixtures/error_groups_suite.robot
+- Last user keyword file: tests/fixtures/error_groups_keywords.resource
+- Failing library: test_library
+
 # Keyword leaf
-Login Timeout
+tests/fixtures/error_groups_suite.robot.Login Timeout
 └── Test Body
     ├── Keyword One    PASS
     ├── Keyword Two    PASS
@@ -22,5 +27,5 @@ Login Timeout
                 └── IF    FAIL
                     └── Sub Keyword 3.1.1    FAIL
                         ├── No Operation    PASS
-                        └── Raise Logged Type Error    FAIL
+                        └── test_library.Raise Logged Type Error    FAIL
                             Error: TypeError: TypeError: expected argument of type st…

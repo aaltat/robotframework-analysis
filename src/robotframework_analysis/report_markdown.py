@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from robot.api import TestSuiteBuilder
 from robot.result import ExecutionResult
+from robot.running.builder import ResourceFileBuilder
 
 _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
@@ -25,6 +27,8 @@ class FailedTest:
     message: str
     log_messages: list[str]
     keyword_leaf_lines: list[str]
+    last_user_keyword_source: Path | None = None
+    failing_library_name: str | None = None
 
 
 @dataclass
@@ -32,6 +36,57 @@ class FailingBranch:
     phase_label: str
     top_level_nodes: list[Any]
     failing_path: list[Any]
+
+
+class _FailedTestCollector:
+    def __init__(self) -> None:
+        self.failed: list[FailedTest] = []
+        self._keyword_source_cache: dict[Path, dict[str, Path]] = {}
+
+    def _keyword_sources_for(self, suite_source: Path) -> dict[str, Path]:
+        resolved = suite_source.resolve()
+        if resolved not in self._keyword_source_cache:
+            self._keyword_source_cache[resolved] = _build_keyword_source_index(resolved)
+        return self._keyword_source_cache[resolved]
+
+    def visit_suite(self, suite: Any) -> None:
+        for test in getattr(suite, "tests", []):
+            self.visit_test(test)
+        for child in getattr(suite, "suites", []):
+            self.visit_suite(child)
+
+    def visit_test(self, test: Any) -> None:
+        if test.status != "FAIL":
+            return
+
+        parent_suite = getattr(test, "parent", None)
+        source = (
+            Path(str(getattr(parent_suite, "source", "")))
+            if getattr(parent_suite, "source", None)
+            else Path("")
+        )
+        keyword_sources = self._keyword_sources_for(source) if source else {}
+
+        suite_branch = _find_suite_failing_branch(parent_suite) if parent_suite else None
+        test_branch = _find_test_failing_branch(test)
+        branch = test_branch or suite_branch
+        failing_keyword = branch.failing_path[-1] if branch else _find_failing_keyword(test)
+        failing_library_name = _find_failing_library_name(branch)
+
+        self.failed.append(
+            FailedTest(
+                suite_name=str(getattr(parent_suite, "name", "")),
+                test_name=str(test.name),
+                source=source,
+                message=str(test.message),
+                log_messages=_collect_log_messages(failing_keyword, str(test.message)),
+                keyword_leaf_lines=_build_keyword_leaf_lines(
+                    str(test.name), branch, failing_library_name
+                ),
+                last_user_keyword_source=_find_last_user_keyword_source(branch, keyword_sources),
+                failing_library_name=failing_library_name,
+            )
+        )
 
 
 def _format_start_end(starttime: str, endtime: str) -> str:
@@ -57,28 +112,9 @@ def _truncate_error(message: str) -> str:
 
 
 def _collect_failed_tests(suite: Any) -> list[FailedTest]:
-    failed: list[FailedTest] = []
-    suite_branch = _find_suite_failing_branch(suite)
-
-    for test in suite.tests:
-        if test.status == "FAIL":
-            source = Path(str(suite.source)) if suite.source else Path("")
-            test_branch = _find_test_failing_branch(test)
-            branch = test_branch or suite_branch
-            failing_keyword = branch.failing_path[-1] if branch else _find_failing_keyword(test)
-            failed.append(
-                FailedTest(
-                    suite_name=suite.name,
-                    test_name=test.name,
-                    source=source,
-                    message=test.message,
-                    log_messages=_collect_log_messages(failing_keyword, test.message),
-                    keyword_leaf_lines=_build_keyword_leaf_lines(test.name, branch),
-                )
-            )
-    for sub_suite in suite.suites:
-        failed.extend(_collect_failed_tests(sub_suite))
-    return failed
+    collector = _FailedTestCollector()
+    suite.visit(collector)
+    return collector.failed
 
 
 def _find_failing_keyword(container: Any) -> Any | None:
@@ -182,6 +218,87 @@ def _node_label(node: Any) -> str:
     return node_type
 
 
+def _normalize_keyword_name(name: str) -> str:
+    return re.sub(r"[\s_]+", "", name).lower()
+
+
+def _build_keyword_source_index(suite_source: Path) -> dict[str, Path]:
+    index: dict[str, Path] = {}
+
+    try:
+        suite_model = TestSuiteBuilder().build(suite_source)
+    except Exception:
+        return index
+
+    for keyword in suite_model.resource.keywords:
+        keyword_source = Path(str(getattr(keyword, "source", suite_source))).resolve()
+        index.setdefault(_normalize_keyword_name(keyword.name), keyword_source)
+
+    stack: list[Path] = []
+    for imp in suite_model.resource.imports:
+        if getattr(imp, "type", "") != "RESOURCE":
+            continue
+        stack.append((Path(str(imp.directory)) / str(imp.name)).resolve())
+
+    visited: set[Path] = set()
+    while stack:
+        resource_path = stack.pop()
+        if resource_path in visited:
+            continue
+        visited.add(resource_path)
+
+        try:
+            resource_model = ResourceFileBuilder().build(resource_path)
+        except Exception:
+            continue
+
+        for keyword in resource_model.keywords:
+            keyword_source = Path(str(getattr(keyword, "source", resource_path))).resolve()
+            index.setdefault(_normalize_keyword_name(keyword.name), keyword_source)
+
+        for imp in resource_model.imports:
+            if getattr(imp, "type", "") != "RESOURCE":
+                continue
+            nested_path = (Path(str(imp.directory)) / str(imp.name)).resolve()
+            if nested_path not in visited:
+                stack.append(nested_path)
+
+    return index
+
+
+def _find_last_user_keyword_source(
+    branch: FailingBranch | None, keyword_sources: dict[str, Path]
+) -> Path | None:
+    if branch is None:
+        return None
+
+    for node in reversed(branch.failing_path):
+        if str(getattr(node, "type", "")) != "KEYWORD":
+            continue
+        node_name = str(getattr(node, "name", "") or "").strip()
+        if not node_name:
+            continue
+        source = keyword_sources.get(_normalize_keyword_name(node_name))
+        if source is not None:
+            return source
+
+    return None
+
+
+def _find_failing_library_name(branch: FailingBranch | None) -> str | None:
+    if branch is None:
+        return None
+
+    failing_leaf = branch.failing_path[-1]
+    libname = getattr(failing_leaf, "libname", None)
+    if libname:
+        return str(libname)
+    owner = getattr(failing_leaf, "owner", None)
+    if owner:
+        return str(owner)
+    return None
+
+
 def _short_error(message: str, limit: int = 50) -> str:
     first_line = message.splitlines()[0] if message else ""
     if len(first_line) <= limit:
@@ -194,13 +311,17 @@ def _render_tree_line(prefix: str, is_last: bool, text: str) -> str:
     return f"{prefix}{branch}{text}"
 
 
-def _render_node_line(node: Any, failing_leaf: Any) -> str:
+def _render_node_line(node: Any, failing_leaf: Any, failing_library_name: str | None) -> str:
     label = _node_label(node)
+    if node is failing_leaf and failing_library_name:
+        label = f"{failing_library_name}.{label}"
     status = str(getattr(node, "status", ""))
     return f"{label}    {status}" if status else label
 
 
-def _build_keyword_leaf_lines(test_name: str, branch: FailingBranch | None) -> list[str]:
+def _build_keyword_leaf_lines(
+    test_name: str, branch: FailingBranch | None, failing_library_name: str | None
+) -> list[str]:
     if branch is None:
         return []
 
@@ -228,7 +349,13 @@ def _build_keyword_leaf_lines(test_name: str, branch: FailingBranch | None) -> l
         out: list[str] = []
         for idx, node in enumerate(nodes):
             is_last = idx == len(nodes) - 1
-            out.append(_render_tree_line(prefix, is_last, _render_node_line(node, failing_leaf)))
+            out.append(
+                _render_tree_line(
+                    prefix,
+                    is_last,
+                    _render_node_line(node, failing_leaf, failing_library_name),
+                )
+            )
 
             next_prefix = prefix + ("    " if is_last else "│   ")
             if node is failing_leaf:
@@ -310,12 +437,32 @@ def _build_detail_filename(
     )
 
 
-def _render_detail_markdown(ft: FailedTest) -> str:
+def _render_detail_markdown(
+    ft: FailedTest, path_normalizer: Callable[[Path], str] | None = None
+) -> str:
     lines = [f"# {ft.suite_name} {ft.test_name} error", "", ft.message]
     if ft.log_messages:
         lines += ["", "# Log message", *ft.log_messages]
+    lines += ["", "# Origin"]
+
+    test_file = path_normalizer(ft.source) if path_normalizer else str(ft.source)
+    lines.append(f"- Test file: {test_file}")
+
+    if ft.last_user_keyword_source is not None:
+        last_user_keyword = (
+            path_normalizer(ft.last_user_keyword_source)
+            if path_normalizer
+            else str(ft.last_user_keyword_source)
+        )
+        lines.append(f"- Last user keyword file: {last_user_keyword}")
+
+    if ft.failing_library_name:
+        lines.append(f"- Failing library: {ft.failing_library_name}")
+
     if ft.keyword_leaf_lines:
-        lines += ["", "# Keyword leaf", *ft.keyword_leaf_lines]
+        keyword_leaf_lines = list(ft.keyword_leaf_lines)
+        keyword_leaf_lines[0] = f"{test_file}.{ft.test_name}"
+        lines += ["", "# Keyword leaf", *keyword_leaf_lines]
     return "\n".join(lines) + "\n"
 
 
@@ -403,7 +550,10 @@ def render_summary_markdown(
                     filename = _build_detail_filename(i, ft.suite_name, ft.test_name, j)
                     detail_file = detail_dir / filename
                     try:
-                        detail_file.write_text(_render_detail_markdown(ft), encoding="utf-8")
+                        detail_file.write_text(
+                            _render_detail_markdown(ft, path_normalizer=path_normalizer),
+                            encoding="utf-8",
+                        )
                     except Exception as exc:
                         warnings.warn(f"Could not write {detail_file}: {exc}.", stacklevel=2)
                     detail_str = (

@@ -6,8 +6,12 @@ assertion failed: expected status code 200 but got 403, indicating insufficient 
 timestamp INFO: printed output goes here 1
 printed output goes here 2
 
+# Origin
+- Test file: tests/fixtures/error_groups_suite.robot
+- Failing library: test_library
+
 # Keyword leaf
-Printed Failure
+tests/fixtures/error_groups_suite.robot.Printed Failure
 └── Test Body
-    └── Raise Printed Assertion Error    FAIL
+    └── test_library.Raise Printed Assertion Error    FAIL
         Error: assertion failed: expected status code 200 but got…
