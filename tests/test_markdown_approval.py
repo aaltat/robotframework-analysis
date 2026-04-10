@@ -15,6 +15,7 @@ from robotframework_analysis.report_markdown import (
     _error_group_key,
     _format_start_end,
     _render_detail_markdown,
+    _sanitize_log_payload,
     _sanitize_name,
     _truncate_error,
     render_summary_markdown,
@@ -361,10 +362,21 @@ def test_collect_failed_tests_includes_only_failing_keyword_logs(tmp_path: Path)
     normalized = [_normalize_log_timestamps(line) for line in login_timeout.log_messages]
     assert normalized == [
         "timestamp INFO: log messages goes here 1",
+        "timestamp INFO: html info message",
         "timestamp DEBUG: log messages goes here 2",
+        "timestamp DEBUG: html debug message",
         "timestamp WARN: log messages goes here 3",
+        "timestamp WARN: <removed html>",
         "timestamp TRACE: log messages goes here 4",
     ]
+
+
+def test_sanitize_log_payload_strips_html_tags() -> None:
+    assert _sanitize_log_payload("<div><b>hello</b> world</div>") == "hello world"
+
+
+def test_sanitize_log_payload_returns_marker_for_tags_only() -> None:
+    assert _sanitize_log_payload('<img src="data:image/png;base64,AAAA" />') == "<removed html>"
 
 
 def test_collect_failed_tests_contains_keyword_leaf_for_nested_failure(tmp_path: Path) -> None:

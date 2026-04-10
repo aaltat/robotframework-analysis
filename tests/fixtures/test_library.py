@@ -35,8 +35,11 @@ def raise_type_error() -> None:
 def raise_logged_type_error() -> None:
     """Emit logger messages before raising a TypeError."""
     logger.info("log messages goes here 1")
+    logger.info("<div><b>html</b> info message</div>")
     logger.debug("log messages goes here 2")
+    logger.debug('<span class="x">html debug message</span>')
     logger.warn("log messages goes here 3")
+    logger.warn('<img src="data:image/png;base64,AAAA" />')
     logger.trace("log messages goes here 4")
     raise_type_error()
 

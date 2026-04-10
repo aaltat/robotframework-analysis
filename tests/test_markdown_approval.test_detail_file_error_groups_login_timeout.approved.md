@@ -4,8 +4,11 @@ TypeError: TypeError: expected argument of type str or bytes-like object, not No
 
 # Log message
 timestamp INFO: log messages goes here 1
+timestamp INFO: html info message
 timestamp DEBUG: log messages goes here 2
+timestamp DEBUG: html debug message
 timestamp WARN: log messages goes here 3
+timestamp WARN: <removed html>
 timestamp TRACE: log messages goes here 4
 
 # Keyword leaf

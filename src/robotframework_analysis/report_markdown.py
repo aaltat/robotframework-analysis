@@ -14,6 +14,7 @@ from robot.result import ExecutionResult
 _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
 _UNSAFE_RE = re.compile(r"[^A-Za-z0-9]+")
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 @dataclass
@@ -266,7 +267,15 @@ def _format_log_message(message: Any) -> str | None:
     if text.startswith("Traceback (most recent call last):"):
         return None
 
-    return f"{timestamp} {level}: {text}"
+    sanitized = _sanitize_log_payload(text)
+    return f"{timestamp} {level}: {sanitized}"
+
+
+def _sanitize_log_payload(text: str) -> str:
+    stripped = _HTML_TAG_RE.sub("", text)
+    normalized = "\n".join(line.strip() for line in stripped.splitlines())
+    cleaned = normalized.strip()
+    return cleaned if cleaned else "<removed html>"
 
 
 def _collect_log_messages(keyword: Any | None, failure_message: str) -> list[str]:
