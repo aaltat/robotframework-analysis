@@ -42,4 +42,81 @@ jobs:
         run: uv run mypy .
 
       - name: Run tests and show coverage
-        run: uv run pytest --cov --cov-report=term-missing
+        run: |
+          set -o pipefail
+          uv run pytest --cov --cov-report=term-missing | tee pytest-output.txt
+
+      - name: Post test and coverage summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+
+          output_path = Path("pytest-output.txt")
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+
+          summary_lines = [
+            "## Test Results",
+            "",
+          ]
+
+          if not output_path.exists():
+            summary_lines += [
+              "Pytest output file was not created.",
+              "",
+              "## Coverage",
+              "",
+              "Coverage data not available.",
+            ]
+            summary_path.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+            raise SystemExit(0)
+
+          text = output_path.read_text(encoding="utf-8", errors="replace")
+          test_result_match = re.search(r"=+\s*(\d+\s+passed(?:,\s*\d+\s+failed)?)\s+in\s+.+", text)
+          if test_result_match:
+            summary_lines.append(f"- {test_result_match.group(1)}")
+          else:
+            summary_lines.append("- Test result summary not found")
+
+          summary_lines += ["", "## Coverage", ""]
+
+          table_started = False
+          rows: list[str] = []
+          for line in text.splitlines():
+            if line.startswith("Name") and "Stmts" in line and "Cover" in line:
+              table_started = True
+              continue
+            if not table_started:
+              continue
+            if line.startswith("-"):
+              continue
+            if not line.strip():
+              if rows:
+                break
+              continue
+
+            m = re.match(
+              r"^(?P<name>.+?)\s+(?P<stmts>\d+)\s+(?P<miss>\d+)\s+(?P<cover>\d+%)\s*(?P<missing>.*)$",
+              line,
+            )
+            if m:
+              name = m.group("name").strip()
+              stmts = m.group("stmts")
+              miss = m.group("miss")
+              cover = m.group("cover")
+              missing = m.group("missing").strip() or "-"
+              rows.append(f"| {name} | {stmts} | {miss} | {cover} | {missing} |")
+
+          if rows:
+            summary_lines += [
+              "| File | Stmts | Miss | Cover | Missing |",
+              "| --- | ---: | ---: | ---: | --- |",
+              *rows,
+            ]
+          else:
+            summary_lines.append("Coverage table not found in pytest output.")
+
+          summary_path.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+          PY
