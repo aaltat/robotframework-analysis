@@ -19,6 +19,7 @@ from robotframework_analysis.report_markdown import (
     _error_group_key,
     _find_failing_library_name,
     _format_start_end,
+    _normalize_keyword_name,
     _render_detail_markdown,
     _sanitize_log_payload,
     _sanitize_name,
@@ -546,6 +547,24 @@ def test_build_keyword_source_index_returns_empty_for_missing_suite_file(tmp_pat
     index = _build_keyword_source_index(missing)
 
     assert index == {}
+
+
+def test_build_keyword_source_index_finds_inline_suite_keywords(tmp_path: Path) -> None:
+    suite_file = tmp_path / "inline_kw_suite.robot"
+    suite_file.write_text(
+        "*** Test Cases ***\n"
+        "Dummy\n"
+        "    My Suite Keyword\n"
+        "\n"
+        "*** Keywords ***\n"
+        "My Suite Keyword\n"
+        "    No Operation\n",
+        encoding="utf-8",
+    )
+
+    index = _build_keyword_source_index(suite_file)
+
+    assert _normalize_keyword_name("My Suite Keyword") in index
 
 
 def test_find_failing_library_name_falls_back_to_owner() -> None:
