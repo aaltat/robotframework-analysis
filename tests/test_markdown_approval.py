@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
-from approvaltests import verify
+from approvaltests import verify, settings
 from approvaltests.core.options import Options
 from robot import run as robot_run  # type: ignore[attr-defined]
 
@@ -69,6 +69,7 @@ def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
 
 
 def test_renders_summary_markdown(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
 
@@ -83,6 +84,7 @@ def test_renders_summary_markdown(tmp_path: Path) -> None:
 
 
 def test_renders_all_passing_markdown(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("all_passing_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
 
@@ -97,6 +99,7 @@ def test_renders_all_passing_markdown(tmp_path: Path) -> None:
 
 
 def test_renders_error_groups_markdown(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
 
@@ -111,6 +114,7 @@ def test_renders_error_groups_markdown(tmp_path: Path) -> None:
 
 
 def test_renders_suite_setup_failure_markdown(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("suite_setup_failure_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
 
@@ -125,6 +129,7 @@ def test_renders_suite_setup_failure_markdown(tmp_path: Path) -> None:
 
 
 def test_renders_suite_teardown_failure_markdown(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("suite_teardown_failure_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
 
@@ -144,6 +149,7 @@ def test_renders_suite_teardown_failure_markdown(tmp_path: Path) -> None:
 
 
 def test_detail_file_summary_suite_failing(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
@@ -160,6 +166,7 @@ def test_detail_file_summary_suite_failing(tmp_path: Path) -> None:
 
 
 def test_detail_file_error_groups_database_error_one(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
@@ -180,6 +187,7 @@ def test_detail_file_error_groups_database_error_one(tmp_path: Path) -> None:
 
 
 def test_detail_file_error_groups_database_error_two(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
@@ -200,6 +208,7 @@ def test_detail_file_error_groups_database_error_two(tmp_path: Path) -> None:
 
 
 def test_detail_file_error_groups_login_timeout(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
@@ -218,6 +227,7 @@ def test_detail_file_error_groups_login_timeout(tmp_path: Path) -> None:
 
 
 def test_detail_file_error_groups_printed_failure(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
@@ -238,6 +248,7 @@ def test_detail_file_error_groups_printed_failure(tmp_path: Path) -> None:
 
 
 def test_detail_file_error_groups_setup_failure_case(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
@@ -258,6 +269,7 @@ def test_detail_file_error_groups_setup_failure_case(tmp_path: Path) -> None:
 
 
 def test_detail_file_error_groups_teardown_failure_case(tmp_path: Path) -> None:
+    settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
     render_summary_markdown(
