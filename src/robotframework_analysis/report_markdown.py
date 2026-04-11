@@ -70,7 +70,7 @@ class _FailedTestCollector:
         suite_branch = _find_suite_failing_branch(parent_suite) if parent_suite else None
         test_branch = _find_test_failing_branch(test)
         branch = test_branch or suite_branch
-        failing_keyword = branch.failing_path[-1] if branch else _find_failing_keyword(test)
+        failing_keyword = branch.failing_path[-1] if branch else None
         failing_library_name = _find_failing_library_name(branch)
 
         self.failed.append(
@@ -115,17 +115,6 @@ def _collect_failed_tests(suite: Any) -> list[FailedTest]:
     collector = _FailedTestCollector()
     suite.visit(collector)
     return collector.failed
-
-
-def _find_failing_keyword(container: Any) -> Any | None:
-    for item in getattr(container, "body", []):
-        if getattr(item, "type", None) != "KEYWORD":
-            continue
-        if getattr(item, "status", None) != "FAIL":
-            continue
-        nested = _find_failing_keyword(item)
-        return nested if nested is not None else item
-    return None
 
 
 def _is_executed(item: Any) -> bool:

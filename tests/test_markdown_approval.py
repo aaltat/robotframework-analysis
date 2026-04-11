@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 from approvaltests import verify
 from approvaltests.core.options import Options
@@ -10,9 +11,13 @@ from robot import run as robot_run  # type: ignore[attr-defined]
 
 from robotframework_analysis.report_markdown import (
     FailedTest,
+    FailingBranch,
     _build_detail_filename,
+    _build_keyword_source_index,
     _collect_failed_tests,
+    _collect_log_messages,
     _error_group_key,
+    _find_failing_library_name,
     _format_start_end,
     _render_detail_markdown,
     _sanitize_log_payload,
@@ -92,6 +97,34 @@ def test_renders_all_passing_markdown(tmp_path: Path) -> None:
 
 def test_renders_error_groups_markdown(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+    normalize = _make_path_normalizer(tmp_path)
+
+    markdown = render_summary_markdown(
+        output_xml,
+        path_normalizer=normalize,
+        time_normalizer=_time_normalizer,
+        project_root=tmp_path,
+    )
+
+    verify(markdown, options=Options().for_file.with_extension(".md"))
+
+
+def test_renders_suite_setup_failure_markdown(tmp_path: Path) -> None:
+    output_xml = _run_fixture("suite_setup_failure_suite.robot", tmp_path)
+    normalize = _make_path_normalizer(tmp_path)
+
+    markdown = render_summary_markdown(
+        output_xml,
+        path_normalizer=normalize,
+        time_normalizer=_time_normalizer,
+        project_root=tmp_path,
+    )
+
+    verify(markdown, options=Options().for_file.with_extension(".md"))
+
+
+def test_renders_suite_teardown_failure_markdown(tmp_path: Path) -> None:
+    output_xml = _run_fixture("suite_teardown_failure_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
 
     markdown = render_summary_markdown(
@@ -496,6 +529,56 @@ def test_render_summary_markdown_path_normalizer_applied(tmp_path: Path) -> None
     markdown = render_summary_markdown(output_xml, path_normalizer=lambda _: "mocked/path.robot")
 
     assert "mocked/path.robot" in markdown
+
+
+def test_render_summary_markdown_without_project_root_omits_detail_column(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+
+    markdown = render_summary_markdown(output_xml, path_normalizer=_path_normalizer)
+
+    assert "| Suite Name | Test Name | Path |" in markdown
+    assert "| Suite Name | Test Name | Path | More Details |" not in markdown
+
+
+def test_build_keyword_source_index_returns_empty_for_missing_suite_file(tmp_path: Path) -> None:
+    missing = tmp_path / "does_not_exist.robot"
+
+    index = _build_keyword_source_index(missing)
+
+    assert index == {}
+
+
+def test_find_failing_library_name_falls_back_to_owner() -> None:
+    leaf = SimpleNamespace(owner="LegacyLib")
+    branch = FailingBranch(phase_label="Test Body", top_level_nodes=[leaf], failing_path=[leaf])
+
+    assert _find_failing_library_name(branch) == "LegacyLib"
+
+
+def test_collect_log_messages_returns_empty_when_keyword_is_none() -> None:
+    assert _collect_log_messages(None, "boom") == []
+
+
+def test_collect_log_messages_skips_non_message_items() -> None:
+    keyword = SimpleNamespace(
+        body=[
+            SimpleNamespace(type="KEYWORD", message="not a message"),
+            SimpleNamespace(type="MESSAGE", level="INFO", message="keep this", timestamp="t"),
+        ]
+    )
+
+    assert _collect_log_messages(keyword, "boom") == ["t INFO: keep this"]
+
+
+def test_collect_log_messages_skips_message_equal_to_failure_message() -> None:
+    keyword = SimpleNamespace(
+        body=[
+            SimpleNamespace(type="MESSAGE", level="INFO", message="boom", timestamp="t"),
+            SimpleNamespace(type="MESSAGE", level="WARN", message="other", timestamp="t2"),
+        ]
+    )
+
+    assert _collect_log_messages(keyword, "boom") == ["t2 WARN: other"]
 
 
 # ---------------------------------------------------------------------------

@@ -1,3 +1,6 @@
+*** Settings ***
+Resource    nested_keywords.resource
+
 *** Keywords ***
 Keyword One
     No Operation
