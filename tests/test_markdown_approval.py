@@ -76,6 +76,20 @@ def test_renders_summary_markdown(tmp_path: Path) -> None:
     verify(markdown, options=Options().for_file.with_extension(".md"))
 
 
+def test_renders_all_passing_markdown(tmp_path: Path) -> None:
+    output_xml = _run_fixture("all_passing_suite.robot", tmp_path)
+    normalize = _make_path_normalizer(tmp_path)
+
+    markdown = render_summary_markdown(
+        output_xml,
+        path_normalizer=normalize,
+        time_normalizer=_time_normalizer,
+        project_root=tmp_path,
+    )
+
+    verify(markdown, options=Options().for_file.with_extension(".md"))
+
+
 def test_renders_error_groups_markdown(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
     normalize = _make_path_normalizer(tmp_path)
