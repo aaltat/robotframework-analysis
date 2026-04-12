@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
-from approvaltests import verify, settings
+from approvaltests import settings, verify
 from approvaltests.core.options import Options
 from robot import run as robot_run  # type: ignore[attr-defined]
 

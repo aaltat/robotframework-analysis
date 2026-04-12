@@ -38,6 +38,10 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=robotframework_analysis --cov-report=term-missing"
+pythonpath = [
+  "src"
+]
+
 
 [tool.coverage.run]
 source = ["robotframework_analysis"]
@@ -57,5 +61,9 @@ ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
+    "approvaltests>=17.4.3",
     "mutmut>=3.5.0",
+    "mypy>=1.20.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.9",
 ]
