@@ -4,7 +4,7 @@
 - Passed: 0
 - Failed: 1
 - Skipped: 0
-- Start / end: 20260101 00:00:00.000 / 20260101 00:00:00.000
+- Start / end: timestamp / timestamp
 
 # Error Group 1
 

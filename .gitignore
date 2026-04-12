@@ -43,3 +43,8 @@ MANIFEST
 output.xml
 log.html
 report.html
+
+# coeverage output
+.coverage
+htmlcov/
+**/*.py,cover

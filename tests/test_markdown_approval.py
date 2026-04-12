@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -24,36 +23,11 @@ from robotframework_analysis.report_markdown import (
     _sanitize_log_payload,
     _sanitize_name,
     _truncate_error,
+    normalize_log_timestamps,
     render_summary_markdown,
 )
 
 _WORKSPACE_ROOT = Path(__file__).parent.parent
-
-
-def _path_normalizer(p: Path) -> str:
-    return str(p.relative_to(_WORKSPACE_ROOT))
-
-
-def _make_path_normalizer(project_root: Path) -> Callable[[Path], str]:
-    def _normalize(p: Path) -> str:
-        try:
-            return str(p.relative_to(_WORKSPACE_ROOT))
-        except ValueError:
-            return str(p.relative_to(project_root))
-
-    return _normalize
-
-
-_FIXED_DATETIME = "20260101 00:00:00.000"
-_LOG_TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+")
-
-
-def _time_normalizer(starttime: str, endtime: str) -> str:
-    return f"{_FIXED_DATETIME} / {_FIXED_DATETIME}"
-
-
-def _normalize_log_timestamps(text: str) -> str:
-    return _LOG_TIMESTAMP_RE.sub("timestamp", text)
 
 
 def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
@@ -71,76 +45,46 @@ def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
 def test_renders_summary_markdown(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
 
-    markdown = render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    markdown = render_summary_markdown(output_xml, project_root=tmp_path)
 
-    verify(markdown, options=Options().for_file.with_extension(".md"))
+    verify(normalize_log_timestamps(markdown), options=Options().for_file.with_extension(".md"))
 
 
 def test_renders_all_passing_markdown(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("all_passing_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
 
-    markdown = render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    markdown = render_summary_markdown(output_xml, project_root=tmp_path)
 
-    verify(markdown, options=Options().for_file.with_extension(".md"))
+    verify(normalize_log_timestamps(markdown), options=Options().for_file.with_extension(".md"))
 
 
 def test_renders_error_groups_markdown(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
 
-    markdown = render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    markdown = render_summary_markdown(output_xml, project_root=tmp_path)
 
-    verify(markdown, options=Options().for_file.with_extension(".md"))
+    verify(normalize_log_timestamps(markdown), options=Options().for_file.with_extension(".md"))
 
 
 def test_renders_suite_setup_failure_markdown(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("suite_setup_failure_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
 
-    markdown = render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    markdown = render_summary_markdown(output_xml, project_root=tmp_path)
 
-    verify(markdown, options=Options().for_file.with_extension(".md"))
+    verify(normalize_log_timestamps(markdown), options=Options().for_file.with_extension(".md"))
 
 
 def test_renders_suite_teardown_failure_markdown(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("suite_teardown_failure_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
 
-    markdown = render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    markdown = render_summary_markdown(output_xml, project_root=tmp_path)
 
-    verify(markdown, options=Options().for_file.with_extension(".md"))
+    verify(normalize_log_timestamps(markdown), options=Options().for_file.with_extension(".md"))
 
 
 # ---------------------------------------------------------------------------
@@ -151,16 +95,10 @@ def test_renders_suite_teardown_failure_markdown(tmp_path: Path) -> None:
 def test_detail_file_summary_suite_failing(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = tmp_path / ".robotframework_analysis" / "group_001_Summary_Suite_Failing_001.md"
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -168,20 +106,14 @@ def test_detail_file_summary_suite_failing(tmp_path: Path) -> None:
 def test_detail_file_error_groups_database_error_one(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = (
         tmp_path
         / ".robotframework_analysis"
         / "group_001_Error_Groups_Suite_Database_Error_One_001.md"
     )
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -189,20 +121,14 @@ def test_detail_file_error_groups_database_error_one(tmp_path: Path) -> None:
 def test_detail_file_error_groups_database_error_two(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = (
         tmp_path
         / ".robotframework_analysis"
         / "group_001_Error_Groups_Suite_Database_Error_Two_002.md"
     )
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -210,18 +136,12 @@ def test_detail_file_error_groups_database_error_two(tmp_path: Path) -> None:
 def test_detail_file_error_groups_login_timeout(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = (
         tmp_path / ".robotframework_analysis" / "group_002_Error_Groups_Suite_Login_Timeout_001.md"
     )
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -229,20 +149,14 @@ def test_detail_file_error_groups_login_timeout(tmp_path: Path) -> None:
 def test_detail_file_error_groups_printed_failure(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = (
         tmp_path
         / ".robotframework_analysis"
         / "group_003_Error_Groups_Suite_Printed_Failure_001.md"
     )
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -250,20 +164,14 @@ def test_detail_file_error_groups_printed_failure(tmp_path: Path) -> None:
 def test_detail_file_error_groups_setup_failure_case(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = (
         tmp_path
         / ".robotframework_analysis"
         / "group_004_Error_Groups_Suite_Setup_Failure_Case_001.md"
     )
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -271,20 +179,14 @@ def test_detail_file_error_groups_setup_failure_case(tmp_path: Path) -> None:
 def test_detail_file_error_groups_teardown_failure_case(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    normalize = _make_path_normalizer(tmp_path)
-    render_summary_markdown(
-        output_xml,
-        path_normalizer=normalize,
-        time_normalizer=_time_normalizer,
-        project_root=tmp_path,
-    )
+    render_summary_markdown(output_xml, project_root=tmp_path)
     detail_file = (
         tmp_path
         / ".robotframework_analysis"
         / "group_005_Error_Groups_Suite_Teardown_Failure_Case_001.md"
     )
     verify(
-        _normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
+        normalize_log_timestamps(detail_file.read_text(encoding="utf-8")),
         options=Options().for_file.with_extension(".md"),
     )
 
@@ -419,7 +321,7 @@ def test_collect_failed_tests_includes_only_failing_keyword_logs(tmp_path: Path)
     failed = _collect_failed_tests(result.suite)
 
     login_timeout = next(ft for ft in failed if ft.test_name == "Login Timeout")
-    normalized = [_normalize_log_timestamps(line) for line in login_timeout.log_messages]
+    normalized = [normalize_log_timestamps(line) for line in login_timeout.log_messages]
     assert normalized == [
         "timestamp INFO: log messages goes here 1",
         "timestamp INFO: html info message",
@@ -465,7 +367,7 @@ def test_collect_failed_tests_includes_print_output_in_log_section(tmp_path: Pat
     failed = _collect_failed_tests(result.suite)
 
     printed_failure = next(ft for ft in failed if ft.test_name == "Printed Failure")
-    normalized = [_normalize_log_timestamps(line) for line in printed_failure.log_messages]
+    normalized = [normalize_log_timestamps(line) for line in printed_failure.log_messages]
     assert normalized == [
         "timestamp INFO: printed output goes here 1\nprinted output goes here 2",
     ]
@@ -536,18 +438,20 @@ def test_render_summary_markdown_raises_when_output_is_missing(tmp_path: Path) -
         raise AssertionError("Expected FileNotFoundError")
 
 
-def test_render_summary_markdown_path_normalizer_applied(tmp_path: Path) -> None:
+def test_render_summary_markdown_paths_are_relative_to_workspace_when_possible(
+    tmp_path: Path,
+) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
 
-    markdown = render_summary_markdown(output_xml, path_normalizer=lambda _: "mocked/path.robot")
+    markdown = render_summary_markdown(output_xml)
 
-    assert "mocked/path.robot" in markdown
+    assert "tests/fixtures/error_groups_suite.robot" in markdown
 
 
 def test_render_summary_markdown_without_project_root_omits_detail_column(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
 
-    markdown = render_summary_markdown(output_xml, path_normalizer=_path_normalizer)
+    markdown = render_summary_markdown(output_xml)
 
     assert "| Suite Name | Test Name | Path |" in markdown
     assert "| Suite Name | Test Name | Path | More Details |" not in markdown
@@ -656,7 +560,7 @@ def test_project_root_cleans_old_files_on_rerun(tmp_path: Path) -> None:
 def test_render_detail_markdown_omits_log_section_when_logs_missing() -> None:
     ft = FailedTest("Summary Suite", "Failing", Path("suite.robot"), "boom", [], [])
 
-    markdown = _normalize_log_timestamps(_render_detail_markdown(ft))
+    markdown = normalize_log_timestamps(_render_detail_markdown(ft))
 
     assert (
         markdown == "# Summary Suite Failing error\n\nboom\n\n# Origin\n- Test file: suite.robot\n"

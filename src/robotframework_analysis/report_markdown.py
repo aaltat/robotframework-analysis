@@ -4,7 +4,6 @@ import re
 import shutil
 import warnings
 from collections import defaultdict
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,6 +16,10 @@ _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
 _UNSAFE_RE = re.compile(r"[^A-Za-z0-9]+")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_LOG_TIMESTAMP_RE = re.compile(
+    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+|\d{8} \d{2}:\d{2}:\d{2}\.\d{3}"
+)
+_APPROVAL_FIXED_DATETIME = "20260101 00:00:00.000"
 
 
 @dataclass
@@ -91,6 +94,15 @@ class _FailedTestCollector:
 
 def _format_start_end(starttime: str, endtime: str) -> str:
     return f"{starttime} / {endtime}"
+
+
+def approval_time_normalizer(starttime: str, endtime: str) -> str:
+    del starttime, endtime
+    return f"{_APPROVAL_FIXED_DATETIME} / {_APPROVAL_FIXED_DATETIME}"
+
+
+def normalize_log_timestamps(text: str, replacement: str = "timestamp") -> str:
+    return _LOG_TIMESTAMP_RE.sub(replacement, text)
 
 
 def _error_group_key(message: str) -> tuple[str, str]:
@@ -426,23 +438,29 @@ def _build_detail_filename(
     )
 
 
-def _render_detail_markdown(
-    ft: FailedTest, path_normalizer: Callable[[Path], str] | None = None
-) -> str:
+def _display_path(path: Path, project_root: Path | None = None) -> str:
+    try:
+        return str(path.relative_to(Path.cwd()))
+    except ValueError:
+        if project_root is not None:
+            try:
+                return str(path.relative_to(project_root))
+            except ValueError:
+                pass
+    return str(path)
+
+
+def _render_detail_markdown(ft: FailedTest, project_root: Path | None = None) -> str:
     lines = [f"# {ft.suite_name} {ft.test_name} error", "", ft.message]
     if ft.log_messages:
         lines += ["", "# Log message", *ft.log_messages]
     lines += ["", "# Origin"]
 
-    test_file = path_normalizer(ft.source) if path_normalizer else str(ft.source)
+    test_file = _display_path(ft.source, project_root)
     lines.append(f"- Test file: {test_file}")
 
     if ft.last_user_keyword_source is not None:
-        last_user_keyword = (
-            path_normalizer(ft.last_user_keyword_source)
-            if path_normalizer
-            else str(ft.last_user_keyword_source)
-        )
+        last_user_keyword = _display_path(ft.last_user_keyword_source, project_root)
         lines.append(f"- Last user keyword file: {last_user_keyword}")
 
     if ft.failing_library_name:
@@ -475,8 +493,6 @@ def _prepare_output_dir(output_dir: Path) -> None:
 
 def render_summary_markdown(
     output_xml: str | Path,
-    path_normalizer: Callable[[Path], str] | None = None,
-    time_normalizer: Callable[[str, str], str] | None = None,
     project_root: Path | None = None,
 ) -> str:
     output_path = Path(output_xml)
@@ -488,11 +504,7 @@ def render_summary_markdown(
     totals = result.statistics.total
     suite_name = result.suite.name
 
-    start_end = (
-        time_normalizer(result.suite.starttime, result.suite.endtime)
-        if time_normalizer
-        else _format_start_end(result.suite.starttime, result.suite.endtime)
-    )
+    start_end = _format_start_end(result.suite.starttime, result.suite.endtime)
 
     lines = [
         f"# {suite_name} Test Summary",
@@ -534,20 +546,18 @@ def render_summary_markdown(
                 table_sep,
             ]
             for j, ft in enumerate(tests, start=1):
-                path_str = path_normalizer(ft.source) if path_normalizer else str(ft.source)
+                path_str = _display_path(ft.source, project_root)
                 if detail_dir is not None:
                     filename = _build_detail_filename(i, ft.suite_name, ft.test_name, j)
                     detail_file = detail_dir / filename
                     try:
                         detail_file.write_text(
-                            _render_detail_markdown(ft, path_normalizer=path_normalizer),
+                            _render_detail_markdown(ft, project_root=project_root),
                             encoding="utf-8",
                         )
                     except Exception as exc:
                         warnings.warn(f"Could not write {detail_file}: {exc}.", stacklevel=2)
-                    detail_str = (
-                        path_normalizer(detail_file) if path_normalizer else str(detail_file)
-                    )
+                    detail_str = _display_path(detail_file, project_root)
                     lines.append(
                         f"| {ft.suite_name} | {ft.test_name} | {path_str} | {detail_str} |"
                     )
