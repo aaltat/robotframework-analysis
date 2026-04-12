@@ -48,3 +48,6 @@ report.html
 .coverage
 htmlcov/
 **/*.py,cover
+
+# analysis output
+.robotframework_analysis/
