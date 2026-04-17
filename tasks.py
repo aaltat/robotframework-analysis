@@ -7,7 +7,7 @@ RUNNING_IN_CI = "GITHUB_RUN_ID" in os.environ
 
 
 @task
-def lint(ctx: Context):
+def lint(ctx: Context) -> None:
     """Run linters."""
     print("Running ruff format...")
     ctx.run("ruff format src tests")
