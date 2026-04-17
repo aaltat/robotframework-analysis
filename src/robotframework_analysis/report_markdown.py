@@ -22,6 +22,9 @@ _LOG_TIMESTAMP_RE = re.compile(
 _APPROVAL_FIXED_DATETIME = "20260101 00:00:00.000"
 
 
+_MIN_BRANCH_DEPTH_FOR_PARENT = 2
+
+
 @dataclass
 class FailedTest:
     suite_name: str
@@ -223,6 +226,20 @@ def _normalize_keyword_name(name: str) -> str:
     return re.sub(r"[\s_]+", "", name).lower()
 
 
+def _index_keywords_from_model(keywords: Any, default_source: Path, index: dict[str, Path]) -> None:
+    for keyword in keywords:
+        source = Path(str(getattr(keyword, "source", default_source))).resolve()
+        index.setdefault(_normalize_keyword_name(keyword.name), source)
+
+
+def _resource_imports_as_paths(imports: Any) -> list[Path]:
+    return [
+        (Path(str(imp.directory)) / str(imp.name)).resolve()
+        for imp in imports
+        if getattr(imp, "type", "") == "RESOURCE"
+    ]
+
+
 def _build_keyword_source_index(suite_source: Path) -> dict[str, Path]:
     index: dict[str, Path] = {}
 
@@ -231,15 +248,8 @@ def _build_keyword_source_index(suite_source: Path) -> dict[str, Path]:
     except Exception:
         return index
 
-    for keyword in suite_model.resource.keywords:
-        keyword_source = Path(str(getattr(keyword, "source", suite_source))).resolve()
-        index.setdefault(_normalize_keyword_name(keyword.name), keyword_source)
-
-    stack: list[Path] = []
-    for imp in suite_model.resource.imports:
-        if getattr(imp, "type", "") != "RESOURCE":
-            continue
-        stack.append((Path(str(imp.directory)) / str(imp.name)).resolve())
+    _index_keywords_from_model(suite_model.resource.keywords, suite_source, index)
+    stack = _resource_imports_as_paths(suite_model.resource.imports)
 
     visited: set[Path] = set()
     while stack:
@@ -253,16 +263,10 @@ def _build_keyword_source_index(suite_source: Path) -> dict[str, Path]:
         except Exception:
             continue
 
-        for keyword in resource_model.keywords:
-            keyword_source = Path(str(getattr(keyword, "source", resource_path))).resolve()
-            index.setdefault(_normalize_keyword_name(keyword.name), keyword_source)
-
-        for imp in resource_model.imports:
-            if getattr(imp, "type", "") != "RESOURCE":
-                continue
-            nested_path = (Path(str(imp.directory)) / str(imp.name)).resolve()
-            if nested_path not in visited:
-                stack.append(nested_path)
+        _index_keywords_from_model(resource_model.keywords, resource_path, index)
+        stack.extend(
+            p for p in _resource_imports_as_paths(resource_model.imports) if p not in visited
+        )
 
     return index
 
@@ -320,6 +324,50 @@ def _render_node_line(node: Any, failing_leaf: Any, failing_library_name: str | 
     return f"{label}    {status}" if status else label
 
 
+@dataclass
+class _BranchRenderContext:
+    failing_leaf: Any
+    failing_library_name: str | None
+    parent: Any | None
+    parent_children: list[Any]
+    failing_path: list[Any]
+
+
+def _render_branch_children(
+    prefix: str,
+    nodes: list[Any],
+    ctx: _BranchRenderContext,
+) -> list[str]:
+    out: list[str] = []
+    for idx, node in enumerate(nodes):
+        is_last = idx == len(nodes) - 1
+        out.append(
+            _render_tree_line(
+                prefix,
+                is_last,
+                _render_node_line(node, ctx.failing_leaf, ctx.failing_library_name),
+            )
+        )
+        next_prefix = prefix + ("    " if is_last else "│   ")
+        if node is ctx.failing_leaf:
+            msg = _short_error(str(getattr(node, "message", "")))
+            if msg:
+                out.append(f"{next_prefix}Error: {msg}")
+            continue
+        if node is ctx.parent:
+            out.extend(_render_branch_children(next_prefix, ctx.parent_children, ctx))
+            continue
+        if any(node is p for p in ctx.failing_path):
+            child_nodes = _iter_executed_nodes(getattr(node, "body", []))
+            path_child = next(
+                (ctx.failing_path[i + 1] for i, p in enumerate(ctx.failing_path[:-1]) if node is p),
+                None,
+            )
+            filtered = [c for c in child_nodes if c is path_child]
+            out.extend(_render_branch_children(next_prefix, filtered, ctx))
+    return out
+
+
 def _build_keyword_leaf_lines(
     test_name: str, branch: FailingBranch | None, failing_library_name: str | None
 ) -> list[str]:
@@ -330,54 +378,27 @@ def _build_keyword_leaf_lines(
     phase_prefix = "    "
 
     failing_leaf = branch.failing_path[-1]
-    parent = branch.failing_path[-2] if len(branch.failing_path) >= 2 else None
+    path_len = len(branch.failing_path)
+    parent = branch.failing_path[-2] if path_len >= _MIN_BRANCH_DEPTH_FOR_PARENT else None
     parent_children = (
         _iter_executed_nodes(getattr(parent, "body", []))
         if parent is not None
         else branch.top_level_nodes
     )
-
-    def in_path(node: Any) -> bool:
-        return any(node is path_node for path_node in branch.failing_path)
-
-    def next_path_node(current: Any) -> Any | None:
-        for idx, path_node in enumerate(branch.failing_path[:-1]):
-            if current is path_node:
-                return branch.failing_path[idx + 1]
-        return None
-
-    def render_children(prefix: str, nodes: list[Any]) -> list[str]:
-        out: list[str] = []
-        for idx, node in enumerate(nodes):
-            is_last = idx == len(nodes) - 1
-            out.append(
-                _render_tree_line(
-                    prefix,
-                    is_last,
-                    _render_node_line(node, failing_leaf, failing_library_name),
-                )
-            )
-
-            next_prefix = prefix + ("    " if is_last else "│   ")
-            if node is failing_leaf:
-                msg = _short_error(str(getattr(node, "message", "")))
-                if msg:
-                    out.append(f"{next_prefix}Error: {msg}")
-                continue
-
-            if node is parent:
-                out.extend(render_children(next_prefix, parent_children))
-                continue
-
-            if in_path(node):
-                child_nodes = _iter_executed_nodes(getattr(node, "body", []))
-                path_child = next_path_node(node)
-                filtered = [child for child in child_nodes if child is path_child]
-                out.extend(render_children(next_prefix, filtered))
-
-        return out
-
-    lines.extend(render_children(phase_prefix, branch.top_level_nodes))
+    lines.extend(
+        _render_branch_children(
+            phase_prefix,
+            branch.top_level_nodes,
+            _BranchRenderContext(
+                failing_leaf=failing_leaf,
+                failing_library_name=failing_library_name,
+                parent=parent,
+                parent_children=parent_children,
+                failing_path=branch.failing_path,
+            ),
+        )
+    )
+    return lines
     return lines
 
 

@@ -7,7 +7,7 @@ name = "robotframework-analysis"
 version = "0.1.0"
 description = "Use LLM to analyze Robot Framework test suites, logs from SUT and changelogs to find out what is going on and how to fix it."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12.11"
 dependencies = [
     "fastmcp>=3.2.0",
     "pydantic-ai>=1.72.0",
@@ -30,7 +30,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
@@ -79,6 +79,10 @@ select = [
     "PLC",
     "PLR",
 ]
+"src/robotframework_analysis/report_markdown.py" = [
+    "BLE001",  # broad exception intentional: third-party robot builders raise arbitrary errors
+    "S112",    # try-except-continue intentional: skip unreadable resource files gracefully
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -96,7 +100,7 @@ show_missing = true
 skip_covered = false
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 mypy_path = ["src"]
 strict = true
 
