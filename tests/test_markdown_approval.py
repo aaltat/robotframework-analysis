@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from approvaltests import settings, verify
 from approvaltests.core.options import Options
 from robot import run as robot_run  # type: ignore[attr-defined]
@@ -250,14 +251,14 @@ def test_format_start_end_produces_correct_string() -> None:
 
 
 def test_start_end_in_rendered_markdown_contains_real_datetime(tmp_path: Path) -> None:
-    _DATETIME_RE = re.compile(r"\d{8} \d{2}:\d{2}:\d{2}\.\d{3}")
+    _datetime_re = re.compile(r"\d{8} \d{2}:\d{2}:\d{2}\.\d{3}")
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
 
     markdown = render_summary_markdown(output_xml)
 
     start_end_lines = [line for line in markdown.splitlines() if "Start / end" in line]
     assert len(start_end_lines) == 1
-    matches = _DATETIME_RE.findall(start_end_lines[0])
+    matches = _datetime_re.findall(start_end_lines[0])
     assert len(matches) == 2, f"Expected two datetimes in: {start_end_lines[0]}"
 
 
@@ -430,12 +431,8 @@ def test_collect_failed_tests_visits_nested_suites(tmp_path: Path) -> None:
 def test_render_summary_markdown_raises_when_output_is_missing(tmp_path: Path) -> None:
     missing = tmp_path / "missing.xml"
 
-    try:
+    with pytest.raises(FileNotFoundError, match=str(missing)):
         render_summary_markdown(missing)
-    except FileNotFoundError as error:
-        assert str(missing) in str(error)
-    else:
-        raise AssertionError("Expected FileNotFoundError")
 
 
 def test_render_summary_markdown_paths_are_relative_to_workspace_when_possible(

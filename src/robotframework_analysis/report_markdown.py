@@ -66,7 +66,7 @@ class _FailedTestCollector:
         source = (
             Path(str(getattr(parent_suite, "source", "")))
             if getattr(parent_suite, "source", None)
-            else Path("")
+            else Path()
         )
         keyword_sources = self._keyword_sources_for(source) if source else {}
 
@@ -403,7 +403,7 @@ def _sanitize_log_payload(text: str) -> str:
     stripped = _HTML_TAG_RE.sub("", text)
     normalized = "\n".join(line.strip() for line in stripped.splitlines())
     cleaned = normalized.strip()
-    return cleaned if cleaned else "<removed html>"
+    return cleaned or "<removed html>"
 
 
 def _collect_log_messages(keyword: Any | None, failure_message: str) -> list[str]:
