@@ -1,10 +1,3 @@
-"""Tests for the failure analyst agent.
-
-Approval tests use TestModel with call_tools=[] and a fixed custom_output_text
-so no real LLM call or MCP server subprocess is needed.  The MCP tool logic is
-already covered by test_results_server.py.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -57,11 +50,6 @@ def _run_fixture(fixture_name: str, tmp_path: Path) -> str:
     return str(output_xml)
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — system prompt
-# ---------------------------------------------------------------------------
-
-
 def test_system_prompt_mentions_get_test_run_summary() -> None:
     assert "get_test_run_summary" in _SYSTEM_PROMPT
 
@@ -74,19 +62,10 @@ def test_system_prompt_mentions_root_cause() -> None:
     assert "root cause" in _SYSTEM_PROMPT.lower()
 
 
-# ---------------------------------------------------------------------------
-# Approval test — analyze_failures with TestModel (no MCP subprocess needed)
-# ---------------------------------------------------------------------------
-
-
 def test_analyze_failures_approval(tmp_path: Path) -> None:
-    """Approval test: verify analyze_failures returns the agent output as a string."""
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
 
-    # Build a standalone Agent with TestModel — no MCPServerStdio subprocess.
-    # The approval test captures the agent's final output so we can detect
-    # accidental prompt or output-format regressions.
     test_agent: Agent[None, str] = Agent(
         model=TestModel(call_tools=[], custom_output_text=_CANNED_ANALYSIS),
         system_prompt=_SYSTEM_PROMPT,
@@ -98,13 +77,7 @@ def test_analyze_failures_approval(tmp_path: Path) -> None:
     verify(output.output, options=Options().for_file.with_extension(".txt"))
 
 
-# ---------------------------------------------------------------------------
-# Unit test — analyze_failures signature and return type
-# ---------------------------------------------------------------------------
-
-
 def test_analyze_failures_returns_string_with_test_model(tmp_path: Path) -> None:
-    """analyze_failures should return a plain string when called with TestModel."""
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
 
     test_agent: Agent[None, str] = Agent(

@@ -1,9 +1,3 @@
-"""Tests for the FastMCP results server tools.
-
-Tools are tested by calling the underlying functions directly (bypassing the
-MCP transport) so the tests remain fast and deterministic.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,11 +20,6 @@ def _run_fixture(fixture_name: str, tmp_path: Path) -> str:
     output_xml = tmp_path / "output.xml"
     robot_run(str(suite_file), output=str(output_xml), log="NONE", report="NONE", loglevel="TRACE")
     return str(output_xml)
-
-
-# ---------------------------------------------------------------------------
-# Approval tests — get_test_run_summary
-# ---------------------------------------------------------------------------
 
 
 def test_server_summary_error_groups(tmp_path: Path) -> None:
@@ -57,11 +46,6 @@ def test_server_summary_all_passing(tmp_path: Path) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Approval tests — get_failure_detail
-# ---------------------------------------------------------------------------
-
-
 def test_server_detail_login_timeout(tmp_path: Path) -> None:
     settings().allow_multiple_verify_calls_for_this_method()
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
@@ -74,11 +58,6 @@ def test_server_detail_login_timeout(tmp_path: Path) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — _ResultsCache
-# ---------------------------------------------------------------------------
-
-
 def test_cache_returns_same_object_on_second_call(tmp_path: Path) -> None:
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
     cache = _ResultsCache()
@@ -86,7 +65,7 @@ def test_cache_returns_same_object_on_second_call(tmp_path: Path) -> None:
     first = cache.get(output_xml)
     second = cache.get(output_xml)
 
-    assert first is second, "Cache should return the identical object on cache hit"
+    assert first is second
 
 
 def test_cache_evicts_stale_entry_when_mtime_changes(tmp_path: Path) -> None:
@@ -95,12 +74,11 @@ def test_cache_evicts_stale_entry_when_mtime_changes(tmp_path: Path) -> None:
 
     first = cache.get(output_xml)
 
-    # Touch the file to bump mtime
     Path(output_xml).touch()
 
     second = cache.get(output_xml)
 
-    assert first is not second, "Cache should re-parse after mtime changes"
+    assert first is not second
 
 
 def test_cache_raises_for_missing_file() -> None:
@@ -121,15 +99,13 @@ def test_get_failure_detail_raises_when_test_not_found(tmp_path: Path) -> None:
 
 
 def test_summary_and_detail_use_shared_cache(tmp_path: Path) -> None:
-    """get_failure_detail after get_test_run_summary must be a cache hit."""
     from robotframework_analysis.mcp.results import server as srv
 
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
-    srv._cache = _ResultsCache()  # start with fresh cache
+    srv._cache = _ResultsCache()
 
     srv.get_test_run_summary(output_xml)
-    assert len(srv._cache._store) == 1, "Summary call should populate cache"
+    assert len(srv._cache._store) == 1
 
-    # Detail call must not add a second entry
     srv.get_failure_detail(output_xml, "Summary Suite", "Failing")
-    assert len(srv._cache._store) == 1, "Detail call should reuse existing cache entry"
+    assert len(srv._cache._store) == 1

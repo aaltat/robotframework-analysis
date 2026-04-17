@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import robot.result as rr
 from approvaltests import settings, verify
 from approvaltests.core.options import Options
 from robot import run as robot_run  # type: ignore[attr-defined]
@@ -25,19 +26,12 @@ from robotframework_analysis.mcp.results.results_analysis import (
     normalize_log_timestamps,
 )
 
-_WORKSPACE_ROOT = Path(__file__).parent.parent
-
 
 def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
     suite_file = Path(__file__).parent / "fixtures" / fixture_name
     output_xml = tmp_path / "output.xml"
     robot_run(str(suite_file), output=str(output_xml), log="NONE", report="NONE", loglevel="TRACE")
     return output_xml
-
-
-# ---------------------------------------------------------------------------
-# Approval tests — summary
-# ---------------------------------------------------------------------------
 
 
 def test_summary_summary_suite(tmp_path: Path) -> None:
@@ -98,11 +92,6 @@ def test_summary_suite_teardown_failure(tmp_path: Path) -> None:
         normalize_log_timestamps(summary.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
-
-
-# ---------------------------------------------------------------------------
-# Approval tests — detail
-# ---------------------------------------------------------------------------
 
 
 def test_detail_summary_suite_failing(tmp_path: Path) -> None:
@@ -189,11 +178,6 @@ def test_detail_error_groups_teardown_failure_case(tmp_path: Path) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — _error_group_key
-# ---------------------------------------------------------------------------
-
-
 def test_error_group_key_extracts_prefix() -> None:
     assert _error_group_key("ValueError: something went wrong") == (
         "ValueError",
@@ -218,11 +202,6 @@ def test_error_group_key_uses_first_line_only() -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — _truncate_error
-# ---------------------------------------------------------------------------
-
-
 def test_truncate_error_short_message_unchanged() -> None:
     assert _truncate_error("short") == "short"
 
@@ -236,11 +215,6 @@ def test_truncate_error_long_message_hard_cut() -> None:
 def test_truncate_error_exactly_300_chars_unchanged() -> None:
     msg = "x" * 300
     assert _truncate_error(msg) == msg
-
-
-# ---------------------------------------------------------------------------
-# Unit tests — build_test_run_summary fields
-# ---------------------------------------------------------------------------
 
 
 def test_summary_start_time_and_end_time_contain_real_datetimes(tmp_path: Path) -> None:
@@ -258,15 +232,8 @@ def test_summary_missing_xml_raises_file_not_found() -> None:
         build_test_run_summary("/nonexistent/output.xml")
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — _collect_failed_tests
-# ---------------------------------------------------------------------------
-
-
 def test_collect_failed_tests_path_contains_fixture_filename(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed: list[FailedTest] = _collect_failed_tests(result.suite)
 
@@ -275,8 +242,6 @@ def test_collect_failed_tests_path_contains_fixture_filename(tmp_path: Path) -> 
 
 def test_collect_failed_tests_includes_only_failing_keyword_logs(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
@@ -303,8 +268,6 @@ def test_sanitize_log_payload_returns_marker_for_tags_only() -> None:
 
 def test_collect_failed_tests_contains_keyword_leaf_for_nested_failure(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
@@ -321,8 +284,6 @@ def test_collect_failed_tests_contains_keyword_leaf_for_nested_failure(tmp_path:
 
 def test_collect_failed_tests_includes_print_output_in_log_section(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
@@ -335,8 +296,6 @@ def test_collect_failed_tests_includes_print_output_in_log_section(tmp_path: Pat
 
 def test_collect_failed_tests_uses_test_setup_branch_when_setup_fails(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
@@ -348,8 +307,6 @@ def test_collect_failed_tests_uses_test_setup_branch_when_setup_fails(tmp_path: 
 
 def test_collect_failed_tests_uses_test_teardown_branch_when_teardown_fails(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
@@ -361,8 +318,6 @@ def test_collect_failed_tests_uses_test_teardown_branch_when_teardown_fails(tmp_
 
 def test_collect_failed_tests_uses_robot_suite_models_only(tmp_path: Path) -> None:
     output_xml = _run_fixture("summary_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
@@ -373,18 +328,11 @@ def test_collect_failed_tests_uses_robot_suite_models_only(tmp_path: Path) -> No
 
 def test_collect_failed_tests_visits_nested_suites(tmp_path: Path) -> None:
     output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
-    import robot.result as rr
-
     result = rr.ExecutionResult(str(output_xml))
     failed = _collect_failed_tests(result.suite)
 
     assert any(ft.suite_name == "Error Groups Suite" for ft in failed)
     assert any(ft.test_name == "Printed Failure" for ft in failed)
-
-
-# ---------------------------------------------------------------------------
-# Unit tests — _collect_log_messages
-# ---------------------------------------------------------------------------
 
 
 def test_collect_log_messages_returns_empty_for_none_keyword() -> None:
@@ -401,11 +349,6 @@ def test_collect_log_messages_skips_matching_failure_message() -> None:
     msg = SimpleNamespace(type="MESSAGE", level="INFO", message="duplicate", timestamp="ts")
     kw = SimpleNamespace(body=[msg])
     assert _collect_log_messages(kw, "duplicate") == []
-
-
-# ---------------------------------------------------------------------------
-# Unit tests — _find_failing_library_name
-# ---------------------------------------------------------------------------
 
 
 def test_find_failing_library_name_returns_none_for_none_branch() -> None:
@@ -432,22 +375,12 @@ def test_find_failing_library_name_falls_back_to_owner() -> None:
     assert _find_failing_library_name(branch) == "RequestsLibrary"
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — _normalize_keyword_name
-# ---------------------------------------------------------------------------
-
-
 def test_normalize_keyword_name_strips_whitespace_and_underscores() -> None:
     assert _normalize_keyword_name("My Keyword") == "mykeyword"
 
 
 def test_normalize_keyword_name_collapses_underscores_and_spaces() -> None:
     assert _normalize_keyword_name("my_keyword_name") == "mykeywordname"
-
-
-# ---------------------------------------------------------------------------
-# Unit tests — _build_keyword_source_index
-# ---------------------------------------------------------------------------
 
 
 def test_build_keyword_source_index_returns_empty_for_nonexistent_source() -> None:
