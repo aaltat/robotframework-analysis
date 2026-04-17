@@ -1,5 +1,8 @@
 """Robot Framework analysis helpers."""
 
-from robotframework_analysis.report_markdown import render_summary_markdown
+from robotframework_analysis.mcp.results.results_analysis import (
+    build_failure_detail,
+    build_test_run_summary,
+)
 
-__all__ = ["render_summary_markdown"]
+__all__ = ["build_failure_detail", "build_test_run_summary"]

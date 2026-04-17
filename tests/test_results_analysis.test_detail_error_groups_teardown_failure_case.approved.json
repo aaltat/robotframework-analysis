@@ -1,0 +1,15 @@
+{
+  "suite_name": "Error Groups Suite",
+  "test_name": "Teardown Failure Case",
+  "message": "Teardown failed:\nteardown failed while cleaning test resources",
+  "log_messages": [],
+  "keyword_leaf": [
+    "Teardown Failure Case",
+    "└── Test Teardown",
+    "    └── test_library.TEARDOWN    FAIL",
+    "        Error: teardown failed while cleaning test resources"
+  ],
+  "test_source": "tests/fixtures/error_groups_suite.robot",
+  "last_user_keyword_source": null,
+  "failing_library": "test_library"
+}

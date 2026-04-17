@@ -1,0 +1,27 @@
+{
+  "suite_name": "Summary Suite",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
+  "totals": {
+    "total": 3,
+    "passed": 1,
+    "failed": 1,
+    "skipped": 1
+  },
+  "error_groups": [
+    {
+      "group_id": 1,
+      "error_prefix": "",
+      "representative_error": "boom",
+      "tests": [
+        {
+          "suite_name": "Summary Suite",
+          "test_name": "Failing",
+          "source_path": "tests/fixtures/summary_suite.robot",
+          "error_prefix": "",
+          "short_error": "boom"
+        }
+      ]
+    }
+  ]
+}

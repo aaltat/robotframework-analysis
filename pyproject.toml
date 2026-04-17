@@ -23,6 +23,9 @@ dev = [
     "ruff>=0.11.4",
 ]
 
+[project.scripts]
+rf-results-server = "robotframework_analysis.mcp.results.server:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -78,10 +81,14 @@ select = [
     "S",
     "PLC",
     "PLR",
+    "SLF001",  # intentional: tests inspect private members to verify cache behaviour
 ]
-"src/robotframework_analysis/report_markdown.py" = [
+"src/robotframework_analysis/mcp/results/results_analysis.py" = [
     "BLE001",  # broad exception intentional: third-party robot builders raise arbitrary errors
     "S112",    # try-except-continue intentional: skip unreadable resource files gracefully
+]
+"src/robotframework_analysis/mcp/results/server.py" = [
+    "TC001",   # FastMCP reads return-type annotations at runtime for serialisation
 ]
 
 [tool.pytest.ini_options]

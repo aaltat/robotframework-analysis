@@ -1,0 +1,15 @@
+{
+  "suite_name": "Error Groups Suite",
+  "test_name": "Setup Failure Case",
+  "message": "Setup failed:\nsetup failed while preparing test preconditions",
+  "log_messages": [],
+  "keyword_leaf": [
+    "Setup Failure Case",
+    "└── Test Setup",
+    "    └── test_library.SETUP    FAIL",
+    "        Error: setup failed while preparing test preconditions"
+  ],
+  "test_source": "tests/fixtures/error_groups_suite.robot",
+  "last_user_keyword_source": null,
+  "failing_library": "test_library"
+}

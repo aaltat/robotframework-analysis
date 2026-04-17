@@ -1,0 +1,15 @@
+{
+  "suite_name": "Error Groups Suite",
+  "test_name": "Database Error One",
+  "message": "ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity",
+  "log_messages": [],
+  "keyword_leaf": [
+    "Database Error One",
+    "└── Test Body",
+    "    └── test_library.Raise Value Error    FAIL",
+    "        Error: ValueError: database connection failed: unable to …"
+  ],
+  "test_source": "tests/fixtures/error_groups_suite.robot",
+  "last_user_keyword_source": null,
+  "failing_library": "test_library"
+}

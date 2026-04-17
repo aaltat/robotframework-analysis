@@ -1,0 +1,12 @@
+{
+  "suite_name": "All Passing Suite",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
+  "totals": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "error_groups": []
+}

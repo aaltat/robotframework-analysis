@@ -1,0 +1,90 @@
+{
+  "suite_name": "Error Groups Suite",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
+  "totals": {
+    "total": 7,
+    "passed": 1,
+    "failed": 6,
+    "skipped": 0
+  },
+  "error_groups": [
+    {
+      "group_id": 1,
+      "error_prefix": "ValueError",
+      "representative_error": "ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity",
+      "tests": [
+        {
+          "suite_name": "Error Groups Suite",
+          "test_name": "Database Error One",
+          "source_path": "tests/fixtures/error_groups_suite.robot",
+          "error_prefix": "ValueError",
+          "short_error": "ValueError: database connection failed: unable to …"
+        },
+        {
+          "suite_name": "Error Groups Suite",
+          "test_name": "Database Error Two",
+          "source_path": "tests/fixtures/error_groups_suite.robot",
+          "error_prefix": "ValueError",
+          "short_error": "ValueError: database connection failed: unable to …"
+        }
+      ]
+    },
+    {
+      "group_id": 2,
+      "error_prefix": "TypeError",
+      "representative_error": "TypeError: TypeError: expected argument of type str or bytes-like object, not NoneType. Function signature requires (name: str, age: int, email: str, phone: str, address: str, city: str, state: str, zip_code: str, country: str, company: str, job_title: str, department: str, manager: str, salary: int…",
+      "tests": [
+        {
+          "suite_name": "Error Groups Suite",
+          "test_name": "Login Timeout",
+          "source_path": "tests/fixtures/error_groups_suite.robot",
+          "error_prefix": "TypeError",
+          "short_error": "TypeError: TypeError: expected argument of type st…"
+        }
+      ]
+    },
+    {
+      "group_id": 3,
+      "error_prefix": "",
+      "representative_error": "assertion failed: expected status code 200 but got 403, indicating insufficient permissions. The user account may not have the required role or scope to access this resource",
+      "tests": [
+        {
+          "suite_name": "Error Groups Suite",
+          "test_name": "Printed Failure",
+          "source_path": "tests/fixtures/error_groups_suite.robot",
+          "error_prefix": "",
+          "short_error": "assertion failed: expected status code 200 but got…"
+        }
+      ]
+    },
+    {
+      "group_id": 4,
+      "error_prefix": "",
+      "representative_error": "Setup failed:\nsetup failed while preparing test preconditions",
+      "tests": [
+        {
+          "suite_name": "Error Groups Suite",
+          "test_name": "Setup Failure Case",
+          "source_path": "tests/fixtures/error_groups_suite.robot",
+          "error_prefix": "",
+          "short_error": "Setup failed:"
+        }
+      ]
+    },
+    {
+      "group_id": 5,
+      "error_prefix": "",
+      "representative_error": "Teardown failed:\nteardown failed while cleaning test resources",
+      "tests": [
+        {
+          "suite_name": "Error Groups Suite",
+          "test_name": "Teardown Failure Case",
+          "source_path": "tests/fixtures/error_groups_suite.robot",
+          "error_prefix": "",
+          "short_error": "Teardown failed:"
+        }
+      ]
+    }
+  ]
+}

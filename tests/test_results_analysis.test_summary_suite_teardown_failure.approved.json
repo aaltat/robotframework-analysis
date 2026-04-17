@@ -1,0 +1,27 @@
+{
+  "suite_name": "Suite Teardown Failure Suite",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
+  "totals": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0
+  },
+  "error_groups": [
+    {
+      "group_id": 1,
+      "error_prefix": "",
+      "representative_error": "Parent suite teardown failed:\nteardown failed while cleaning test resources",
+      "tests": [
+        {
+          "suite_name": "Suite Teardown Failure Suite",
+          "test_name": "Should Fail From Suite Teardown",
+          "source_path": "tests/fixtures/suite_teardown_failure_suite.robot",
+          "error_prefix": "",
+          "short_error": "Parent suite teardown failed:"
+        }
+      ]
+    }
+  ]
+}

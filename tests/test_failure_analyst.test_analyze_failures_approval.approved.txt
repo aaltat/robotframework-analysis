@@ -1,0 +1,28 @@
+## Test Run Analysis
+
+**6 failures** across **5 error groups**.
+
+### Error Group 1 — ValueError (Database)
+- Root cause: database connection timeout to `host.example.com:5432`
+- Tests affected: Database Error One, Database Error Two
+- Fix: check DB credentials and network connectivity in CI environment
+
+### Error Group 2 — TypeError (Login)
+- Root cause: `None` passed where a `str` is expected in `process_user_data()`
+- Tests affected: Login Timeout
+- Fix: validate user data before calling the function
+
+### Error Group 3 — Assertion (HTTP)
+- Root cause: server returned 403 instead of 200
+- Tests affected: Printed Failure
+- Fix: ensure the test user has the required role
+
+### Error Group 4 — Setup failure
+- Root cause: test setup keyword raised an error before the test body ran
+- Tests affected: Setup Failure Case
+- Fix: investigate the setup keyword
+
+### Error Group 5 — Teardown failure
+- Root cause: test teardown failed to clean up resources
+- Tests affected: Teardown Failure Case
+- Fix: make the teardown keyword idempotent

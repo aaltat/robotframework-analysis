@@ -1,0 +1,15 @@
+{
+  "suite_name": "Summary Suite",
+  "test_name": "Failing",
+  "message": "boom",
+  "log_messages": [],
+  "keyword_leaf": [
+    "Failing",
+    "└── Test Body",
+    "    └── BuiltIn.Fail    FAIL",
+    "        Error: boom"
+  ],
+  "test_source": "tests/fixtures/summary_suite.robot",
+  "last_user_keyword_source": null,
+  "failing_library": "BuiltIn"
+}

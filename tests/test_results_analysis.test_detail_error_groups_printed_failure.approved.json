@@ -1,0 +1,17 @@
+{
+  "suite_name": "Error Groups Suite",
+  "test_name": "Printed Failure",
+  "message": "assertion failed: expected status code 200 but got 403, indicating insufficient permissions. The user account may not have the required role or scope to access this resource",
+  "log_messages": [
+    "timestamp INFO: printed output goes here 1\nprinted output goes here 2"
+  ],
+  "keyword_leaf": [
+    "Printed Failure",
+    "└── Test Body",
+    "    └── test_library.Raise Printed Assertion Error    FAIL",
+    "        Error: assertion failed: expected status code 200 but got…"
+  ],
+  "test_source": "tests/fixtures/error_groups_suite.robot",
+  "last_user_keyword_source": null,
+  "failing_library": "test_library"
+}

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import re
-import shutil
-import warnings
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,14 +9,20 @@ from robot.api import TestSuiteBuilder
 from robot.result import ExecutionResult
 from robot.running.builder import ResourceFileBuilder
 
+from robotframework_analysis.mcp.results.models import (
+    ErrorGroup,
+    FailedTestRef,
+    FailureDetail,
+    RunTotals,
+    TestRunSummary,
+)
+
 _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
-_UNSAFE_RE = re.compile(r"[^A-Za-z0-9]+")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _LOG_TIMESTAMP_RE = re.compile(
     r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+|\d{8} \d{2}:\d{2}:\d{2}\.\d{3}"
 )
-_APPROVAL_FIXED_DATETIME = "20260101 00:00:00.000"
 
 
 _MIN_BRANCH_DEPTH_FOR_PARENT = 2
@@ -93,15 +96,6 @@ class _FailedTestCollector:
                 failing_library_name=failing_library_name,
             )
         )
-
-
-def _format_start_end(starttime: str, endtime: str) -> str:
-    return f"{starttime} / {endtime}"
-
-
-def approval_time_normalizer(starttime: str, endtime: str) -> str:
-    del starttime, endtime
-    return f"{_APPROVAL_FIXED_DATETIME} / {_APPROVAL_FIXED_DATETIME}"
 
 
 def normalize_log_timestamps(text: str, replacement: str = "timestamp") -> str:
@@ -399,7 +393,6 @@ def _build_keyword_leaf_lines(
         )
     )
     return lines
-    return lines
 
 
 def _format_log_message(message: Any) -> str | None:
@@ -444,145 +437,119 @@ def _collect_log_messages(keyword: Any | None, failure_message: str) -> list[str
     return logs
 
 
-def _sanitize_name(s: str) -> str:
-    return _UNSAFE_RE.sub("_", s).strip("_")
-
-
-def _build_detail_filename(
-    group_num: int, suite_name: str, test_name: str, running_num: int
-) -> str:
-    return (
-        f"group_{group_num:03d}"
-        f"_{_sanitize_name(suite_name)}"
-        f"_{_sanitize_name(test_name)}"
-        f"_{running_num:03d}.md"
-    )
-
-
-def _display_path(path: Path, project_root: Path | None = None) -> str:
+def _display_path(path: Path) -> str:
     try:
         return str(path.relative_to(Path.cwd()))
     except ValueError:
-        if project_root is not None:
-            try:
-                return str(path.relative_to(project_root))
-            except ValueError:
-                pass
-    return str(path)
+        return str(path)
 
 
-def _render_detail_markdown(ft: FailedTest, project_root: Path | None = None) -> str:
-    lines = [f"# {ft.suite_name} {ft.test_name} error", "", ft.message]
-    if ft.log_messages:
-        lines += ["", "# Log message", *ft.log_messages]
-    lines += ["", "# Origin"]
-
-    test_file = _display_path(ft.source, project_root)
-    lines.append(f"- Test file: {test_file}")
-
-    if ft.last_user_keyword_source is not None:
-        last_user_keyword = _display_path(ft.last_user_keyword_source, project_root)
-        lines.append(f"- Last user keyword file: {last_user_keyword}")
-
-    if ft.failing_library_name:
-        lines.append(f"- Failing library: {ft.failing_library_name}")
-
-    if ft.keyword_leaf_lines:
-        keyword_leaf_lines = list(ft.keyword_leaf_lines)
-        keyword_leaf_lines[0] = f"{test_file}.{ft.test_name}"
-        lines += ["", "# Keyword leaf", *keyword_leaf_lines]
-    return "\n".join(lines) + "\n"
+def _build_failed_test_ref(ft: FailedTest) -> FailedTestRef:
+    return FailedTestRef(
+        suite_name=ft.suite_name,
+        test_name=ft.test_name,
+        source_path=_display_path(ft.source),
+        error_prefix=_error_group_key(ft.message)[0],
+        short_error=_short_error(ft.message),
+    )
 
 
-def _prepare_output_dir(output_dir: Path) -> None:
-    if output_dir.exists():
-        try:
-            shutil.rmtree(output_dir)
-        except Exception as exc:
-            warnings.warn(
-                f"Could not delete {output_dir}: {exc}. Please delete manually.",
-                stacklevel=2,
-            )
-    try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as exc:
-        warnings.warn(
-            f"Could not create {output_dir}: {exc}. Please create manually.",
-            stacklevel=2,
+@dataclass
+class _ParsedResults:
+    suite_name: str
+    start_time: str
+    end_time: str
+    total: int
+    passed: int
+    failed: int
+    skipped: int
+    failed_tests: list[FailedTest]
+
+
+def _parse_output_xml(output_path: Path) -> _ParsedResults:
+    result = ExecutionResult(str(output_path))
+    totals = result.statistics.total
+    return _ParsedResults(
+        suite_name=result.suite.name,
+        start_time=result.suite.starttime,
+        end_time=result.suite.endtime,
+        total=totals.total,
+        passed=totals.passed,
+        failed=totals.failed,
+        skipped=totals.skipped,
+        failed_tests=_collect_failed_tests(result.suite),
+    )
+
+
+def _build_summary_model(pr: _ParsedResults) -> TestRunSummary:
+    groups_map: dict[tuple[str, str], list[FailedTest]] = {}
+    for ft in pr.failed_tests:
+        key = _error_group_key(ft.message)
+        groups_map.setdefault(key, []).append(ft)
+
+    error_groups = [
+        ErrorGroup(
+            group_id=i,
+            error_prefix=key[0],
+            representative_error=_truncate_error(tests[0].message),
+            tests=[_build_failed_test_ref(ft) for ft in tests],
         )
+        for i, (key, tests) in enumerate(groups_map.items(), start=1)
+    ]
+
+    return TestRunSummary(
+        suite_name=pr.suite_name,
+        start_time=pr.start_time,
+        end_time=pr.end_time,
+        totals=RunTotals(
+            total=pr.total,
+            passed=pr.passed,
+            failed=pr.failed,
+            skipped=pr.skipped,
+        ),
+        error_groups=error_groups,
+    )
 
 
-def render_summary_markdown(
-    output_xml: str | Path,
-    project_root: Path | None = None,
-) -> str:
+def _build_detail_model(pr: _ParsedResults, suite_name: str, test_name: str) -> FailureDetail:
+    for ft in pr.failed_tests:
+        if ft.suite_name == suite_name and ft.test_name == test_name:
+            return FailureDetail(
+                suite_name=ft.suite_name,
+                test_name=ft.test_name,
+                message=ft.message,
+                log_messages=ft.log_messages,
+                keyword_leaf=ft.keyword_leaf_lines,
+                test_source=_display_path(ft.source),
+                last_user_keyword_source=(
+                    _display_path(ft.last_user_keyword_source)
+                    if ft.last_user_keyword_source is not None
+                    else None
+                ),
+                failing_library=ft.failing_library_name,
+            )
+
+    msg = f"Test '{suite_name} / {test_name}' not found in failed tests."
+    raise ValueError(msg)
+
+
+def build_test_run_summary(output_xml: str | Path) -> TestRunSummary:
+    """Parse *output_xml* and return a summary with error groups."""
     output_path = Path(output_xml)
     if not output_path.exists():
         msg = f"Robot output.xml not found: {output_path}"
         raise FileNotFoundError(msg)
+    return _build_summary_model(_parse_output_xml(output_path))
 
-    result = ExecutionResult(str(output_path))
-    totals = result.statistics.total
-    suite_name = result.suite.name
 
-    start_end = _format_start_end(result.suite.starttime, result.suite.endtime)
-
-    lines = [
-        f"# {suite_name} Test Summary",
-        "",
-        f"- Total: {totals.total}",
-        f"- Passed: {totals.passed}",
-        f"- Failed: {totals.failed}",
-        f"- Skipped: {totals.skipped}",
-        f"- Start / end: {start_end}",
-    ]
-
-    failed_tests = _collect_failed_tests(result.suite)
-    if failed_tests:
-        groups: dict[tuple[str, str], list[FailedTest]] = defaultdict(list)
-        for ft in failed_tests:
-            groups[_error_group_key(ft.message)].append(ft)
-
-        detail_dir: Path | None = None
-        if project_root is not None:
-            detail_dir = project_root / ".robotframework_analysis"
-            _prepare_output_dir(detail_dir)
-
-        for i, (key, tests) in enumerate(groups.items(), start=1):
-            prefix_label = f": {key[0]}" if key[0] else ""
-            if detail_dir is not None:
-                table_header = "| Suite Name | Test Name | Path | More Details |"
-                table_sep = "| --- | --- | --- | --- |"
-            else:
-                table_header = "| Suite Name | Test Name | Path |"
-                table_sep = "| --- | --- | --- |"
-            lines += [
-                "",
-                f"# Error Group {i}{prefix_label}",
-                "",
-                _truncate_error(tests[0].message),
-                "",
-                f"## Group {i} Tests",
-                table_header,
-                table_sep,
-            ]
-            for j, ft in enumerate(tests, start=1):
-                path_str = _display_path(ft.source, project_root)
-                if detail_dir is not None:
-                    filename = _build_detail_filename(i, ft.suite_name, ft.test_name, j)
-                    detail_file = detail_dir / filename
-                    try:
-                        detail_file.write_text(
-                            _render_detail_markdown(ft, project_root=project_root),
-                            encoding="utf-8",
-                        )
-                    except Exception as exc:
-                        warnings.warn(f"Could not write {detail_file}: {exc}.", stacklevel=2)
-                    detail_str = _display_path(detail_file, project_root)
-                    lines.append(
-                        f"| {ft.suite_name} | {ft.test_name} | {path_str} | {detail_str} |"
-                    )
-                else:
-                    lines.append(f"| {ft.suite_name} | {ft.test_name} | {path_str} |")
-
-    return "\n".join(lines) + "\n"
+def build_failure_detail(
+    output_xml: str | Path,
+    suite_name: str,
+    test_name: str,
+) -> FailureDetail:
+    """Parse *output_xml* and return detail for the named test."""
+    output_path = Path(output_xml)
+    if not output_path.exists():
+        msg = f"Robot output.xml not found: {output_path}"
+        raise FileNotFoundError(msg)
+    return _build_detail_model(_parse_output_xml(output_path), suite_name, test_name)
