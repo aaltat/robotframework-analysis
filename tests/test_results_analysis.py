@@ -17,6 +17,8 @@ from robotframework_analysis.mcp.results.results_analysis import (
     _collect_failed_tests,
     _collect_log_messages,
     _error_group_key,
+    _extract_screenshot_refs,
+    _extract_screenshot_refs_from_keyword,
     _find_failing_library_name,
     _normalize_keyword_name,
     _sanitize_log_payload,
@@ -26,11 +28,28 @@ from robotframework_analysis.mcp.results.results_analysis import (
     normalize_log_timestamps,
 )
 
+_SCREENSHOT_PATH_RE = re.compile(r'"(/[^"]+screenshot_[^"]+\.(?:png|jpg|jpeg|gif|webp))"')
+
+
+def _normalize_screenshot_paths(json_str: str) -> str:
+    return _SCREENSHOT_PATH_RE.sub('"<screenshot_path>"', json_str)
+
+
+def _normalize_detail(json_str: str) -> str:
+    return _normalize_screenshot_paths(normalize_log_timestamps(json_str))
+
 
 def _run_fixture(fixture_name: str, tmp_path: Path) -> Path:
     suite_file = Path(__file__).parent / "fixtures" / fixture_name
     output_xml = tmp_path / "output.xml"
-    robot_run(str(suite_file), output=str(output_xml), log="NONE", report="NONE", loglevel="TRACE")
+    robot_run(
+        str(suite_file),
+        output=str(output_xml),
+        outputdir=str(tmp_path),
+        log="NONE",
+        report="NONE",
+        loglevel="TRACE",
+    )
     return output_xml
 
 
@@ -101,7 +120,7 @@ def test_detail_summary_suite_failing(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Summary Suite", "Failing")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 
@@ -113,7 +132,7 @@ def test_detail_error_groups_database_error_one(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Error Groups Suite", "Database Error One")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 
@@ -125,7 +144,7 @@ def test_detail_error_groups_database_error_two(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Error Groups Suite", "Database Error Two")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 
@@ -137,7 +156,7 @@ def test_detail_error_groups_login_timeout(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Error Groups Suite", "Login Timeout")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 
@@ -149,7 +168,7 @@ def test_detail_error_groups_printed_failure(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Error Groups Suite", "Printed Failure")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 
@@ -161,7 +180,7 @@ def test_detail_error_groups_setup_failure_case(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Error Groups Suite", "Setup Failure Case")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 
@@ -173,9 +192,66 @@ def test_detail_error_groups_teardown_failure_case(tmp_path: Path) -> None:
     detail = build_failure_detail(output_xml, "Error Groups Suite", "Teardown Failure Case")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
+
+
+def test_detail_screenshot_via_file_link(tmp_path: Path) -> None:
+    output_xml = _run_fixture("screenshot_suite.robot", tmp_path)
+
+    detail = build_failure_detail(output_xml, "Screenshot Suite", "Screenshot Via File Link")
+
+    assert len(detail.screenshot_paths) == 1
+    screenshot = Path(detail.screenshot_paths[0])
+    assert screenshot.is_absolute()
+    assert screenshot.exists()
+    assert screenshot.suffix == ".png"
+
+
+def test_detail_screenshot_via_embedded_image(tmp_path: Path) -> None:
+    output_xml = _run_fixture("screenshot_suite.robot", tmp_path)
+
+    detail = build_failure_detail(output_xml, "Screenshot Suite", "Screenshot Via Embedded Image")
+
+    assert len(detail.screenshot_paths) == 1
+    screenshot = Path(detail.screenshot_paths[0])
+    assert screenshot.is_absolute()
+    assert screenshot.exists()
+    assert screenshot.read_bytes()[:4] == b"\x89PNG"
+
+
+def test_extract_screenshot_refs_finds_href_link() -> None:
+    html = '<a href="screenshot.png">click</a>'
+    assert _extract_screenshot_refs(html) == ["screenshot.png"]
+
+
+def test_extract_screenshot_refs_finds_embedded_data_uri() -> None:
+    html = '<img alt="sc" src="data:image/png;base64,AAAA" />'
+    assert _extract_screenshot_refs(html) == ["data:image/png;base64,AAAA"]
+
+
+def test_extract_screenshot_refs_ignores_non_image_href() -> None:
+    html = '<a href="report.html">report</a>'
+    assert _extract_screenshot_refs(html) == []
+
+
+def test_extract_screenshot_refs_returns_empty_for_plain_text() -> None:
+    assert _extract_screenshot_refs("no images here") == []
+
+
+def test_extract_screenshot_refs_from_keyword_collects_all_messages() -> None:
+    msg1 = SimpleNamespace(type="MESSAGE", message='<a href="sc1.png">s</a>')
+    msg2 = SimpleNamespace(type="MESSAGE", message='<img src="data:image/jpeg;base64,XYZ" />')
+    kw = SimpleNamespace(body=[msg1, msg2])
+
+    refs = _extract_screenshot_refs_from_keyword(kw)
+
+    assert refs == ["sc1.png", "data:image/jpeg;base64,XYZ"]
+
+
+def test_extract_screenshot_refs_from_keyword_returns_empty_for_none() -> None:
+    assert _extract_screenshot_refs_from_keyword(None) == []
 
 
 def test_error_group_key_extracts_prefix() -> None:

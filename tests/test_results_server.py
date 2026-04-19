@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -14,11 +15,24 @@ from robotframework_analysis.mcp.results.server import (
     get_test_run_summary,
 )
 
+_SCREENSHOT_PATH_RE = re.compile(r'"(/[^"]+screenshot_[^"]+\.(?:png|jpg|jpeg|gif|webp))"')
+
+
+def _normalize_detail(json_str: str) -> str:
+    return _SCREENSHOT_PATH_RE.sub('"<screenshot_path>"', normalize_log_timestamps(json_str))
+
 
 def _run_fixture(fixture_name: str, tmp_path: Path) -> str:
     suite_file = Path(__file__).parent / "fixtures" / fixture_name
     output_xml = tmp_path / "output.xml"
-    robot_run(str(suite_file), output=str(output_xml), log="NONE", report="NONE", loglevel="TRACE")
+    robot_run(
+        str(suite_file),
+        output=str(output_xml),
+        outputdir=str(tmp_path),
+        log="NONE",
+        report="NONE",
+        loglevel="TRACE",
+    )
     return str(output_xml)
 
 
@@ -53,7 +67,7 @@ def test_server_detail_login_timeout(tmp_path: Path) -> None:
     detail = get_failure_detail(output_xml, "Error Groups Suite", "Login Timeout")
 
     verify(
-        normalize_log_timestamps(detail.model_dump_json(indent=2)),
+        _normalize_detail(detail.model_dump_json(indent=2)),
         options=Options().for_file.with_extension(".json"),
     )
 

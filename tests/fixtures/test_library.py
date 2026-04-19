@@ -1,6 +1,15 @@
 """Test fixture library for raising different exception types."""
 
+import base64
+from pathlib import Path
+
 from robot.api import logger
+
+_MINIMAL_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWj"
+    "R9awAAAABJRU5ErkJggg=="
+)
+_MINIMAL_PNG = base64.b64decode(_MINIMAL_PNG_B64)
 
 
 def raise_value_error() -> None:
@@ -68,3 +77,20 @@ def raise_setup_failure() -> None:
 def raise_teardown_failure() -> None:
     """Raise a teardown-specific runtime error."""
     raise RuntimeError("teardown failed while cleaning test resources")
+
+
+def raise_with_file_screenshot(output_dir: str) -> None:
+    """Create a PNG file in output_dir, log it as an href link, then fail."""
+    screenshot_path = Path(output_dir) / "screenshot_file_link.png"
+    screenshot_path.write_bytes(_MINIMAL_PNG)
+    logger.info('<a href="screenshot_file_link.png">screenshot</a>', html=True)
+    raise AssertionError("failed with file screenshot")
+
+
+def raise_with_embedded_screenshot() -> None:
+    """Log a base64-encoded PNG as an embedded image, then fail."""
+    logger.info(
+        f'<img alt="screenshot" src="data:image/png;base64,{_MINIMAL_PNG_B64}" />',
+        html=True,
+    )
+    raise AssertionError("failed with embedded screenshot")

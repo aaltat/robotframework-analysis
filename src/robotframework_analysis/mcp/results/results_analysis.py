@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import re
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,15 @@ _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _LOG_TIMESTAMP_RE = re.compile(
     r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+|\d{8} \d{2}:\d{2}:\d{2}\.\d{3}"
 )
+_HREF_IMG_RE = re.compile(
+    r'<a\b[^>]*\bhref="([^"]+\.(?:png|jpg|jpeg|gif|webp))"',
+    re.IGNORECASE,
+)
+_IMG_DATA_URI_RE = re.compile(
+    r'<img\b[^>]*\bsrc="(data:image/[^"]+)"',
+    re.IGNORECASE,
+)
+_DATA_URI_PARTS_RE = re.compile(r"data:(image/[^;]+);base64,(.+)", re.DOTALL)
 
 
 _MIN_BRANCH_DEPTH_FOR_PARENT = 2
@@ -38,6 +49,7 @@ class FailedTest:
     keyword_leaf_lines: list[str]
     last_user_keyword_source: Path | None = None
     failing_library_name: str | None = None
+    screenshot_refs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -94,6 +106,7 @@ class _FailedTestCollector:
                 ),
                 last_user_keyword_source=_find_last_user_keyword_source(branch, keyword_sources),
                 failing_library_name=failing_library_name,
+                screenshot_refs=_extract_screenshot_refs_from_keyword(failing_keyword),
             )
         )
 
@@ -437,6 +450,53 @@ def _collect_log_messages(keyword: Any | None, failure_message: str) -> list[str
     return logs
 
 
+def _extract_screenshot_refs(message_text: str) -> list[str]:
+    refs: list[str] = []
+    refs.extend(m.group(1) for m in _HREF_IMG_RE.finditer(message_text))
+    refs.extend(m.group(1) for m in _IMG_DATA_URI_RE.finditer(message_text))
+    return refs
+
+
+def _extract_screenshot_refs_from_keyword(keyword: Any | None) -> list[str]:
+    refs: list[str] = []
+    for item in getattr(keyword, "body", []):
+        if getattr(item, "type", None) != "MESSAGE":
+            continue
+        refs.extend(_extract_screenshot_refs(getattr(item, "message", "")))
+    return refs
+
+
+def _save_embedded_image(data_uri: str, output_dir: Path) -> Path | None:
+    match = _DATA_URI_PARTS_RE.match(data_uri)
+    if not match:
+        return None
+    mime_type = match.group(1)
+    ext = mime_type.split("/")[-1]
+    try:
+        image_bytes = base64.b64decode(match.group(2))
+    except Exception:
+        return None
+    filename = f"screenshot_{uuid.uuid4().hex}.{ext}"
+    path = output_dir / filename
+    try:
+        path.write_bytes(image_bytes)
+    except Exception:
+        return None
+    return path
+
+
+def _resolve_screenshot_paths(refs: list[str], output_path: Path) -> list[str]:
+    paths: list[str] = []
+    for ref in refs:
+        if ref.startswith("data:"):
+            saved = _save_embedded_image(ref, output_path.parent)
+            if saved is not None:
+                paths.append(str(saved.resolve()))
+        else:
+            paths.append(str((output_path.parent / ref).resolve()))
+    return paths
+
+
 def _display_path(path: Path) -> str:
     try:
         return str(path.relative_to(Path.cwd()))
@@ -511,7 +571,9 @@ def _build_summary_model(pr: _ParsedResults) -> TestRunSummary:
     )
 
 
-def _build_detail_model(pr: _ParsedResults, suite_name: str, test_name: str) -> FailureDetail:
+def _build_detail_model(
+    pr: _ParsedResults, output_path: Path, suite_name: str, test_name: str
+) -> FailureDetail:
     for ft in pr.failed_tests:
         if ft.suite_name == suite_name and ft.test_name == test_name:
             return FailureDetail(
@@ -527,6 +589,7 @@ def _build_detail_model(pr: _ParsedResults, suite_name: str, test_name: str) -> 
                     else None
                 ),
                 failing_library=ft.failing_library_name,
+                screenshot_paths=_resolve_screenshot_paths(ft.screenshot_refs, output_path),
             )
 
     msg = f"Test '{suite_name} / {test_name}' not found in failed tests."
@@ -552,4 +615,4 @@ def build_failure_detail(
     if not output_path.exists():
         msg = f"Robot output.xml not found: {output_path}"
         raise FileNotFoundError(msg)
-    return _build_detail_model(_parse_output_xml(output_path), suite_name, test_name)
+    return _build_detail_model(_parse_output_xml(output_path), output_path, suite_name, test_name)

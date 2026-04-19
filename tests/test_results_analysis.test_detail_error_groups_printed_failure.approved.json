@@ -13,5 +13,6 @@
   ],
   "test_source": "tests/fixtures/error_groups_suite.robot",
   "last_user_keyword_source": null,
-  "failing_library": "test_library"
+  "failing_library": "test_library",
+  "screenshot_paths": []
 }

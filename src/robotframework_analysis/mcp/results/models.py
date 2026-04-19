@@ -42,3 +42,4 @@ class FailureDetail(BaseModel):
     test_source: str
     last_user_keyword_source: str | None
     failing_library: str | None
+    screenshot_paths: list[str] = []

@@ -11,5 +11,6 @@
   ],
   "test_source": "tests/fixtures/summary_suite.robot",
   "last_user_keyword_source": null,
-  "failing_library": "BuiltIn"
+  "failing_library": "BuiltIn",
+  "screenshot_paths": []
 }
