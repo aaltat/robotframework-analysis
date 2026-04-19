@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,7 +16,10 @@ from robotframework_analysis.mcp.results.results_analysis import (
     _ParsedResults,
 )
 
-mcp = FastMCP("robotframework-results")
+name = "robotframework-results-analysis"
+logger = logging.getLogger(name)
+
+mcp = FastMCP(name)
 
 
 @dataclass
@@ -52,8 +56,16 @@ def get_test_run_summary(output_xml: str) -> TestRunSummary:
         output_xml: Absolute or cwd-relative path to the Robot Framework
             output.xml produced by a test run.
     """
+    logger.info("get_test_run_summary called: output_xml=%s", output_xml)
     parsed = _cache.get(output_xml)
-    return _build_summary_model(parsed)
+    summary = _build_summary_model(parsed)
+    logger.info(
+        "get_test_run_summary result: %d total, %d failed, %d error group(s)",
+        summary.totals.total,
+        summary.totals.failed,
+        len(summary.error_groups),
+    )
+    return summary
 
 
 @mcp.tool()
@@ -69,11 +81,27 @@ def get_failure_detail(output_xml: str, suite_name: str, test_name: str) -> Fail
             ``get_test_run_summary``.
         test_name: Exact ``test_name`` from the ``FailedTestRef``.
     """
+    logger.info(
+        "get_failure_detail called: output_xml=%s suite=%s test=%s",
+        output_xml,
+        suite_name,
+        test_name,
+    )
     parsed = _cache.get(output_xml)
-    return _build_detail_model(parsed, suite_name, test_name)
+    detail = _build_detail_model(parsed, suite_name, test_name)
+    logger.info(
+        "get_failure_detail result: %d log message(s), %d keyword(s) in leaf",
+        len(detail.log_messages),
+        len(detail.keyword_leaf),
+    )
+    return detail
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     mcp.run()
 
 

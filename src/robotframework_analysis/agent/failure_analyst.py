@@ -39,19 +39,33 @@ async def analyze_failures(
     Args:
         output_xml: Absolute or cwd-relative path to the Robot Framework
             ``output.xml`` produced by a test run.
-        model: Override the default ``openai:gpt-4o`` model.  Accepts any
+        model: Override the default ``ollama:gemma4:e4b`` model.  Accepts any
             pydantic-ai model or known model name string.  Pass a
             ``TestModel`` instance for deterministic testing.
     """
+    resolved_model = model or "ollama:gemma4:e4b"
     server = MCPServerStdio(
         sys.executable,
         ["-m", "robotframework_analysis.mcp.results.server"],
     )
     agent: Agent[None, str] = Agent(
-        model or "openai:gpt-4o",
+        resolved_model,
         system_prompt=_SYSTEM_PROMPT,
         toolsets=[server],
     )
     async with server:
         result = await agent.run(f"Analyze the Robot Framework test results in: {output_xml}")
     return result.output
+
+
+if __name__ == "__main__":
+    import argparse
+    import asyncio
+
+    parser = argparse.ArgumentParser(description="Analyse Robot Framework test failures.")
+    parser.add_argument("output_xml", help="Path to the Robot Framework output.xml file")
+    parser.add_argument("--model", default="ollama:gemma4:e4b", help="Override the default model")
+    args = parser.parse_args()
+
+    analysis = asyncio.run(analyze_failures(args.output_xml, model=args.model))
+    print(analysis)
