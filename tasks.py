@@ -19,3 +19,9 @@ def lint(ctx: Context) -> None:
     ctx.run(" ".join(ruff_format_cmd))
     print("Running mypy...")
     ctx.run("mypy src tests")
+
+
+@task
+def atest_example(ctx: Context) -> None:
+    """Run example tests."""
+    ctx.run("robot -L debug -d results example.robot")
