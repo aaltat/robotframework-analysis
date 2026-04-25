@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from typing import Any
 
@@ -18,12 +19,17 @@ Workflow:
 of all failures grouped by error pattern.
 2. For each failure group that needs deeper investigation, call get_failure_detail \
 to retrieve the full log messages and keyword call tree for one representative test.
-3. Identify root causes and common patterns across failure groups.
-4. Produce a clear, structured report covering:
+3. Check the screenshot_paths field in the get_failure_detail response. \
+If it is non-empty, you MUST call get_screenshot_analysis for every path in that \
+list before proceeding. Do not skip this step.
+4. Identify root causes and common patterns across failure groups.
+5. Produce a clear, structured report covering:
    - How many tests failed and in how many error groups
    - The root cause of each group with evidence from the logs and keyword tree
    - Specific, actionable suggestions for fixing each group
 """
+
+logger = logging.getLogger("failure_analyst_agent")
 
 
 async def analyze_failures(
@@ -48,13 +54,15 @@ async def analyze_failures(
         sys.executable,
         ["-m", "robotframework_analysis.mcp.results.server"],
     )
-    agent: Agent[None, str] = Agent(
+    summary_agent: Agent[None, str] = Agent(
         resolved_model,
         system_prompt=_SYSTEM_PROMPT,
         toolsets=[server],
     )
     async with server:
-        result = await agent.run(f"Analyze the Robot Framework test results in: {output_xml}")
+        result = await summary_agent.run(
+            f"Analyze the Robot Framework test results in: {output_xml}"
+        )
     return result.output
 
 

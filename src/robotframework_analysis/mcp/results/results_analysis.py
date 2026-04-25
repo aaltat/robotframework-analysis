@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ from robotframework_analysis.mcp.results.models import (
     TestRunSummary,
 )
 
+logger = logging.getLogger("robotframework-results-analysis")
 _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -423,7 +425,8 @@ def _format_log_message(message: Any) -> str | None:
         return None
 
     sanitized = _sanitize_log_payload(text)
-    return f"{timestamp} {level}: {sanitized}"
+    truncated = _truncate_error(sanitized)
+    return f"{timestamp} {level}: {truncated}"
 
 
 def _sanitize_log_payload(text: str) -> str:
@@ -491,9 +494,13 @@ def _resolve_screenshot_paths(refs: list[str], output_path: Path) -> list[str]:
         if ref.startswith("data:"):
             saved = _save_embedded_image(ref, output_path.parent)
             if saved is not None:
-                paths.append(str(saved.resolve()))
+                resolved = str(saved.resolve())
+                logger.info("screenshot path resolved (embedded): %s", resolved)
+                paths.append(resolved)
         else:
-            paths.append(str((output_path.parent / ref).resolve()))
+            resolved = str((output_path.parent / ref).resolve())
+            logger.info("screenshot path resolved: %s", resolved)
+            paths.append(resolved)
     return paths
 
 

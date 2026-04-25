@@ -51,3 +51,6 @@ htmlcov/
 
 # analysis output
 .robotframework_analysis/
+
+# Environment variables
+.env
