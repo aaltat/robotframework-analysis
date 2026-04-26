@@ -26,7 +26,7 @@ delegate_agent = Agent(
 
 
 @delegate_agent.tool
-async def analyze_failures(ctx: RunContext, output_xml: str) -> str:
+async def analyze_failures(_ctx: RunContext, output_xml: str) -> str:
     """Analyse test result from Robot Framework output.xml file.
 
     Args:
@@ -52,4 +52,4 @@ if __name__ == "__main__":
     result = delegate_agent.run_sync(
         f"Analyze the Robot Framework test results from: {args.output_xml}"
     )
-    print(result.output)  # noqa: T201 — intentional stdout output for CLI
+    print(result.output)
