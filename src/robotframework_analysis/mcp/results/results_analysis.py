@@ -20,7 +20,7 @@ from robotframework_analysis.mcp.results.models import (
     TestRunSummary,
 )
 
-logger = logging.getLogger("robotframework-results-analysis")
+logger = logging.getLogger("rf_analyst_robotframework_results_analysis")
 _PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*):\s*")
 _TRUNCATE_LIMIT = 300
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -46,6 +46,8 @@ class FailedTest:
     suite_name: str
     test_name: str
     source: Path
+    start_time: str
+    end_time: str
     message: str
     log_messages: list[str]
     keyword_leaf_lines: list[str]
@@ -101,6 +103,8 @@ class _FailedTestCollector:
                 suite_name=str(getattr(parent_suite, "name", "")),
                 test_name=str(test.name),
                 source=source,
+                start_time=str(getattr(test, "starttime", "") or ""),
+                end_time=str(getattr(test, "endtime", "") or ""),
                 message=str(test.message),
                 log_messages=_collect_log_messages(failing_keyword, str(test.message)),
                 keyword_leaf_lines=_build_keyword_leaf_lines(
@@ -586,6 +590,8 @@ def _build_detail_model(
             return FailureDetail(
                 suite_name=ft.suite_name,
                 test_name=ft.test_name,
+                start_time=ft.start_time,
+                end_time=ft.end_time,
                 message=ft.message,
                 log_messages=ft.log_messages,
                 keyword_leaf=ft.keyword_leaf_lines,

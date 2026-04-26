@@ -1,6 +1,8 @@
 {
   "suite_name": "Error Groups Suite",
   "test_name": "Printed Failure",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
   "message": "assertion failed: expected status code 200 but got 403, indicating insufficient permissions. The user account may not have the required role or scope to access this resource",
   "log_messages": [
     "timestamp INFO: printed output goes here 1\nprinted output goes here 2"

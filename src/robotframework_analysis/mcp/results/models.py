@@ -36,6 +36,8 @@ class TestRunSummary(BaseModel):
 class FailureDetail(BaseModel):
     suite_name: str
     test_name: str
+    start_time: str = ""
+    end_time: str = ""
     message: str
     log_messages: list[str]
     keyword_leaf: list[str]

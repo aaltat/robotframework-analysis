@@ -16,7 +16,7 @@ from robotframework_analysis.mcp.results.results_analysis import (
     _ParsedResults,
 )
 
-name = "robotframework-results-analysis"
+name = "rf_analyst_robotframework_results_analysis"
 logger = logging.getLogger(name)
 
 mcp = FastMCP(name)

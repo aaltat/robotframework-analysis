@@ -45,6 +45,16 @@ def test_parse_artifact_url_invalid_path() -> None:
         parse_artifact_url("https://github.com/org/repo/actions/jobs/123")
 
 
+def test_parse_artifact_url_invalid_host() -> None:
+    with pytest.raises(ArtifactFetchError, match="Artifact URL must be"):
+        parse_artifact_url("https://example.com/org/repo/actions/runs/1/artifacts/2")
+
+
+def test_parse_artifact_url_non_integer_ids() -> None:
+    with pytest.raises(ArtifactFetchError, match="must be integers"):
+        parse_artifact_url("https://github.com/org/repo/actions/runs/not-a-number/artifacts/two")
+
+
 def test_fetch_artifact_bundle_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
@@ -251,5 +261,179 @@ def test_fetch_artifact_bundle_ignores_pabot_results_output_xml(
 
         assert bundle.output_xml.parts[-1] == "output.xml"
         assert "pabot_results" not in bundle.output_xml.parts
+
+    _run(run_test())
+
+
+def test_fetch_artifact_bundle_rejects_invalid_metadata_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"not-json")
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_test() -> None:
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ArtifactFetchError, match="was not valid JSON"):
+                await fetch_artifact_bundle(
+                    "https://github.com/org/repo/actions/runs/10/artifacts/20",
+                    client=client,
+                )
+
+    _run(run_test())
+
+
+@pytest.mark.parametrize(
+    ("metadata", "message"),
+    [
+        ({"archive_download_url": "https://api.github.com/artifact/archive/20"}, "artifact name"),
+        ({"name": "artifact-name"}, "archive_download_url"),
+    ],
+)
+def test_fetch_artifact_bundle_rejects_incomplete_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    metadata: dict[str, str],
+    message: str,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=metadata)
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_test() -> None:
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ArtifactFetchError, match=message):
+                await fetch_artifact_bundle(
+                    "https://github.com/org/repo/actions/runs/10/artifacts/20",
+                    client=client,
+                )
+
+    _run(run_test())
+
+
+@pytest.mark.parametrize(
+    ("status_code", "message"),
+    [
+        (401, "rejected credentials"),
+        (404, "no longer available"),
+        (418, "status 418"),
+    ],
+)
+def test_fetch_artifact_bundle_surfaces_non_retriable_http_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
+    message: str,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code)
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_test() -> None:
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ArtifactFetchError, match=message):
+                await fetch_artifact_bundle(
+                    "https://github.com/org/repo/actions/runs/10/artifacts/20",
+                    client=client,
+                )
+
+    _run(run_test())
+
+
+def test_fetch_artifact_bundle_fails_after_connection_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("boom", request=request)
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_test() -> None:
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ArtifactFetchError, match="failed after retries"):
+                await fetch_artifact_bundle(
+                    "https://github.com/org/repo/actions/runs/10/artifacts/20",
+                    client=client,
+                    sleep_func=fake_sleep,
+                    retry_delays=(0.1, 0.2),
+                )
+
+    _run(run_test())
+
+    assert sleeps == [0.1, 0.2]
+
+
+def test_fetch_artifact_bundle_rejects_invalid_zip_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/org/repo/actions/artifacts/20":
+            return httpx.Response(
+                200,
+                json={
+                    "name": "artifact-name",
+                    "archive_download_url": "https://api.github.com/artifact/archive/20",
+                },
+            )
+        if request.url.path == "/artifact/archive/20":
+            return httpx.Response(200, content=b"not-a-zip")
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_test() -> None:
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ArtifactFetchError, match="not a valid zip archive"):
+                await fetch_artifact_bundle(
+                    "https://github.com/org/repo/actions/runs/10/artifacts/20",
+                    client=client,
+                )
+
+    _run(run_test())
+
+
+def test_fetch_artifact_bundle_rejects_unsafe_zip_entry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    zip_payload = _zip_bytes({"../escape/output.xml": "<robot></robot>"})
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/org/repo/actions/artifacts/20":
+            return httpx.Response(
+                200,
+                json={
+                    "name": "artifact-name",
+                    "archive_download_url": "https://api.github.com/artifact/archive/20",
+                },
+            )
+        if request.url.path == "/artifact/archive/20":
+            return httpx.Response(200, content=zip_payload)
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+
+    async def run_test() -> None:
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ArtifactFetchError, match="Unsafe zip entry"):
+                await fetch_artifact_bundle(
+                    "https://github.com/org/repo/actions/runs/10/artifacts/20",
+                    client=client,
+                )
 
     _run(run_test())

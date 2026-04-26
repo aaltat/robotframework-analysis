@@ -1,6 +1,8 @@
 {
   "suite_name": "Error Groups Suite",
   "test_name": "Database Error One",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
   "message": "ValueError: database connection failed: unable to connect to server at host.example.com:5432, connection timeout after 30 seconds, please check your database credentials and network connectivity",
   "log_messages": [],
   "keyword_leaf": [

@@ -1,6 +1,8 @@
 {
   "suite_name": "Summary Suite",
   "test_name": "Failing",
+  "start_time": "timestamp",
+  "end_time": "timestamp",
   "message": "boom",
   "log_messages": [],
   "keyword_leaf": [
