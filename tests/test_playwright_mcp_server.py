@@ -65,9 +65,7 @@ def test_get_errors_returns_only_errors() -> None:
 
 
 def test_get_errors_wide_window_includes_no_context_error() -> None:
-    errors = get_playwright_errors_for_test(
-        _FIXTURE, _TEST_ID, _START, "2026-04-30T18:07:25.100Z"
-    )
+    errors = get_playwright_errors_for_test(_FIXTURE, _TEST_ID, _START, "2026-04-30T18:07:25.100Z")
     seqs = {e.seq for e in errors}
     assert 127 in seqs
     assert 252 in seqs

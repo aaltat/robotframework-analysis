@@ -20,7 +20,7 @@ _FIXTURE = Path(__file__).parent / "fixtures" / "playwright-log-slice.txt"
 # ---------------------------------------------------------------------------
 
 
-def _event_to_dict(event: object) -> dict:
+def _event_to_dict(event: object) -> dict[str, object]:
     if isinstance(event, GrpcEvent):
         return {
             "type": "grpc",

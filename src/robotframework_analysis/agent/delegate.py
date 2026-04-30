@@ -70,9 +70,7 @@ async def analyze_playwright_failures(
             ``analyze_failures``, containing error groups with
             ``test_id``, ``test_start_time``, and ``test_end_time``.
     """
-    logger.info(
-        "analyze_playwright_failures called: log_file=%s", playwright_log_file
-    )
+    logger.info("analyze_playwright_failures called: log_file=%s", playwright_log_file)
     try:
         rf_report = json.loads(rf_error_groups_json)
         groups = rf_report.get("error_groups", [])
@@ -93,11 +91,13 @@ async def analyze_playwright_failures(
                 representative,
             )
             results.append(
-                json.dumps({
-                    "test_id": None,
-                    "confidence": "no_evidence",
-                    "playwright_error_summary": "Skipped: test_id not available in RF report",
-                })
+                json.dumps(
+                    {
+                        "test_id": None,
+                        "confidence": "no_evidence",
+                        "playwright_error_summary": "Skipped: test_id not available in RF report",
+                    }
+                )
             )
             continue
         if not (start_time and end_time):

@@ -13,7 +13,7 @@ def _make_mock_ctx() -> object:
     return object()
 
 
-def _rf_report(groups: list[dict]) -> str:
+def _rf_report(groups: list[dict[str, object]]) -> str:
     return json.dumps({"total_failed": len(groups), "error_groups": groups})
 
 
