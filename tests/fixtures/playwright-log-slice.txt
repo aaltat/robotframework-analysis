@@ -1,0 +1,18 @@
+{"level":"info","time":"2026-04-30T18:07:24.144Z","seq":117,"component":"browser-library","event_kind":"grpc","action":"getBrowserCatalog","status":"started"}
+2026-04-30T18:07:24.144Z pw:api => page.title started
+2026-04-30T18:07:24.146Z pw:api <= page.title succeeded
+{"level":"info","time":"2026-04-30T18:07:24.146Z","seq":118,"component":"browser-library","event_kind":"grpc","action":"getBrowserCatalog","status":"succeeded"}
+{"level":"debug","time":"2026-04-30T18:07:24.149Z","seq":119,"component":"browser-library","event_kind":"grpc","action":"setRFContext","status":"started"}
+{"level":"debug","time":"2026-04-30T18:07:24.149Z","seq":120,"test_name":"Test.02 Content Keywords.Pdf.Save PDF With Invalid Margin","test_id":"s1-s1-s1-t3","component":"browser-library","event_kind":"grpc","action":"setRFContext","status":"succeeded"}
+{"level":"info","time":"2026-04-30T18:07:24.150Z","seq":121,"test_name":"Test.02 Content Keywords.Pdf.Save PDF With Invalid Margin","test_id":"s1-s1-s1-t3","component":"browser-library","event_kind":"grpc","action":"getBrowserCatalog","status":"started"}
+2026-04-30T18:07:24.151Z pw:api => page.title started
+2026-04-30T18:07:24.155Z pw:api <= page.title succeeded
+{"level":"info","time":"2026-04-30T18:07:24.156Z","seq":122,"test_name":"Test.02 Content Keywords.Pdf.Save PDF With Invalid Margin","test_id":"s1-s1-s1-t3","component":"browser-library","event_kind":"grpc","action":"getBrowserCatalog","status":"succeeded"}
+{"level":"info","time":"2026-04-30T18:07:24.165Z","seq":123,"test_name":"Test.02 Content Keywords.Pdf.Save PDF With Invalid Margin","test_id":"s1-s1-s1-t3","component":"browser-library","event_kind":"grpc","action":"savePageAsPdf","status":"started"}
+2026-04-30T18:07:24.166Z pw:api => page.pdf started
+2026-04-30T18:07:24.168Z pw:api <= page.pdf failed
+{"level":"info","time":"2026-04-30T18:07:24.168Z","seq":126,"test_name":"Test.02 Content Keywords.Pdf.Save PDF With Invalid Margin","test_id":"s1-s1-s1-t3","component":"browser-library","event_kind":"grpc","action":"savePageAsPdf","status":"failed"}
+{"level":"error","time":"2026-04-30T18:07:24.168Z","seq":127,"test_name":"Test.02 Content Keywords.Pdf.Save PDF With Invalid Margin","test_id":"s1-s1-s1-t3","component":"browser-library","event_kind":"grpc_error","status":"failed","error_type":"Error","msg":"page.pdf: Failed to parse parameter value: other\n    at savePageAsPdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9816:20)\n    at PlaywrightServer.pdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9916:32)"}
+2026-04-30T18:07:24.170Z pw:api   element is visible, enabled and stable
+{"level":"info","time":"2026-04-30T18:07:25.053Z","seq":251,"component":"browser-library","event_kind":"grpc","action":"click","status":"failed"}
+{"level":"error","time":"2026-04-30T18:07:25.053Z","seq":252,"component":"browser-library","event_kind":"grpc_error","status":"failed","error_type":"TimeoutError","msg":"locator.click: Timeout 500ms exceeded.\nCall log:\n  - waiting for locator('id=CreateOverlayButton')"}

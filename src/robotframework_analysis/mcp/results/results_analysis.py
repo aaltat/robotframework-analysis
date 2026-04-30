@@ -45,6 +45,7 @@ _MIN_BRANCH_DEPTH_FOR_PARENT = 2
 class FailedTest:
     suite_name: str
     test_name: str
+    test_id: str
     source: Path
     start_time: str
     end_time: str
@@ -102,6 +103,7 @@ class _FailedTestCollector:
             FailedTest(
                 suite_name=str(getattr(parent_suite, "name", "")),
                 test_name=str(test.name),
+                test_id=str(getattr(test, "id", "") or ""),
                 source=source,
                 start_time=str(getattr(test, "starttime", "") or ""),
                 end_time=str(getattr(test, "endtime", "") or ""),
@@ -519,6 +521,7 @@ def _build_failed_test_ref(ft: FailedTest) -> FailedTestRef:
     return FailedTestRef(
         suite_name=ft.suite_name,
         test_name=ft.test_name,
+        test_id=ft.test_id,
         source_path=_display_path(ft.source),
         error_prefix=_error_group_key(ft.message)[0],
         short_error=_short_error(ft.message),
@@ -590,6 +593,7 @@ def _build_detail_model(
             return FailureDetail(
                 suite_name=ft.suite_name,
                 test_name=ft.test_name,
+                test_id=ft.test_id,
                 start_time=ft.start_time,
                 end_time=ft.end_time,
                 message=ft.message,

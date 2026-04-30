@@ -17,6 +17,7 @@
         {
           "suite_name": "Suite Teardown Failure Suite",
           "test_name": "Should Fail From Suite Teardown",
+          "test_id": "s1-t1",
           "source_path": "tests/fixtures/suite_teardown_failure_suite.robot",
           "error_prefix": "",
           "short_error": "Parent suite teardown failed:"

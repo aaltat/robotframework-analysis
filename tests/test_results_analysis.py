@@ -197,6 +197,25 @@ def test_detail_error_groups_teardown_failure_case(tmp_path: Path) -> None:
     )
 
 
+def test_summary_failed_test_ref_has_test_id(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+
+    summary = build_test_run_summary(output_xml)
+
+    ref = summary.error_groups[0].tests[0]
+    assert ref.test_id  # must be non-empty, e.g. "s1-t1"
+    assert ref.test_id.startswith("s")
+
+
+def test_detail_has_test_id(tmp_path: Path) -> None:
+    output_xml = _run_fixture("error_groups_suite.robot", tmp_path)
+
+    detail = build_failure_detail(output_xml, "Error Groups Suite", "Database Error One")
+
+    assert detail.test_id  # must be non-empty
+    assert detail.test_id.startswith("s")
+
+
 def test_detail_screenshot_via_file_link(tmp_path: Path) -> None:
     output_xml = _run_fixture("screenshot_suite.robot", tmp_path)
 

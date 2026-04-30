@@ -1,6 +1,7 @@
 {
   "suite_name": "Error Groups Suite",
   "test_name": "Teardown Failure Case",
+  "test_id": "s1-t7",
   "start_time": "timestamp",
   "end_time": "timestamp",
   "message": "Teardown failed:\nteardown failed while cleaning test resources",

@@ -27,6 +27,7 @@ Output format — return a single JSON object, nothing else:
       "error_pattern": "<short pattern>",
       "affected_tests": <int>,
       "representative_test": "<suite_name> / <test_name>",
+      "test_id": "<test_id from get_failure_detail, e.g. s1-s1-s1-t8>",
       "test_start_time": "<start_time from get_failure_detail>",
       "test_end_time": "<end_time from get_failure_detail>",
       "failure_time": "<timestamp of last log message before failure>",
@@ -48,7 +49,7 @@ Rules:
 logger = logging.getLogger("rf_analyst_failure_analyst_agent")
 
 
-def build_agent(model: str = "ollama:gemma4:e4b") -> Agent[None, str]:
+def build_analysis_agent(model: str = "ollama:gemma4:e4b") -> Agent[None, str]:
     """Create and return the failure analyst agent with the given model."""
     server = FastMCPToolset(results_mcp)
     return Agent(

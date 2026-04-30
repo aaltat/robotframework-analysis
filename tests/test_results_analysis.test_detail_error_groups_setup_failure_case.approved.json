@@ -1,6 +1,7 @@
 {
   "suite_name": "Error Groups Suite",
   "test_name": "Setup Failure Case",
+  "test_id": "s1-t6",
   "start_time": "timestamp",
   "end_time": "timestamp",
   "message": "Setup failed:\nsetup failed while preparing test preconditions",

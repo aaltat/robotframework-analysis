@@ -17,6 +17,7 @@
         {
           "suite_name": "Error Groups Suite",
           "test_name": "Database Error One",
+          "test_id": "s1-t2",
           "source_path": "tests/fixtures/error_groups_suite.robot",
           "error_prefix": "ValueError",
           "short_error": "ValueError: database connection failed: unable to …"
@@ -24,6 +25,7 @@
         {
           "suite_name": "Error Groups Suite",
           "test_name": "Database Error Two",
+          "test_id": "s1-t3",
           "source_path": "tests/fixtures/error_groups_suite.robot",
           "error_prefix": "ValueError",
           "short_error": "ValueError: database connection failed: unable to …"
@@ -38,6 +40,7 @@
         {
           "suite_name": "Error Groups Suite",
           "test_name": "Login Timeout",
+          "test_id": "s1-t4",
           "source_path": "tests/fixtures/error_groups_suite.robot",
           "error_prefix": "TypeError",
           "short_error": "TypeError: TypeError: expected argument of type st…"
@@ -52,6 +55,7 @@
         {
           "suite_name": "Error Groups Suite",
           "test_name": "Printed Failure",
+          "test_id": "s1-t5",
           "source_path": "tests/fixtures/error_groups_suite.robot",
           "error_prefix": "",
           "short_error": "assertion failed: expected status code 200 but got…"
@@ -66,6 +70,7 @@
         {
           "suite_name": "Error Groups Suite",
           "test_name": "Setup Failure Case",
+          "test_id": "s1-t6",
           "source_path": "tests/fixtures/error_groups_suite.robot",
           "error_prefix": "",
           "short_error": "Setup failed:"
@@ -80,6 +85,7 @@
         {
           "suite_name": "Error Groups Suite",
           "test_name": "Teardown Failure Case",
+          "test_id": "s1-t7",
           "source_path": "tests/fixtures/error_groups_suite.robot",
           "error_prefix": "",
           "short_error": "Teardown failed:"

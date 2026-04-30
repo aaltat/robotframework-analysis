@@ -1,6 +1,7 @@
 {
   "suite_name": "Summary Suite",
   "test_name": "Failing",
+  "test_id": "s1-t2",
   "start_time": "timestamp",
   "end_time": "timestamp",
   "message": "boom",

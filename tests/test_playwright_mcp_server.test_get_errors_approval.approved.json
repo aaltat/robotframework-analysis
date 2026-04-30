@@ -1,0 +1,10 @@
+[
+    {
+        "action": "",
+        "error_type": "Error",
+        "msg": "page.pdf: Failed to parse parameter value: other\n    at savePageAsPdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9816:20)\n    at PlaywrightServer.pdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9916:32)",
+        "seq": 127,
+        "test_id": "s1-s1-s1-t3",
+        "time": "2026-04-30T18:07:24.168000+00:00"
+    }
+]

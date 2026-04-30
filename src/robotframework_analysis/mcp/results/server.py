@@ -90,9 +90,10 @@ def get_failure_detail(output_xml: str, suite_name: str, test_name: str) -> Fail
     parsed = _cache.get(output_xml)
     detail = _build_detail_model(parsed, Path(output_xml), suite_name, test_name)
     logger.info(
-        "get_failure_detail result: %d log message(s), %d keyword(s) in leaf",
+        "get_failure_detail result: %d log message(s), %d keyword(s) in leaf test id: %s",
         len(detail.log_messages),
         len(detail.keyword_leaf),
+        detail.test_id,
     )
     return detail
 

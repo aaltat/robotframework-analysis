@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class FailedTestRef(BaseModel):
     suite_name: str
     test_name: str
+    test_id: str
     source_path: str
     error_prefix: str
     short_error: str
@@ -36,6 +37,7 @@ class TestRunSummary(BaseModel):
 class FailureDetail(BaseModel):
     suite_name: str
     test_name: str
+    test_id: str = ""
     start_time: str = ""
     end_time: str = ""
     message: str
