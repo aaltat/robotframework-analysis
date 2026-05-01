@@ -218,3 +218,65 @@ def test_filter_errors_accepts_naive_window_timestamps() -> None:
     )
     assert len(errors) == 1
     assert errors[0].seq == 127
+
+
+def test_filter_errors_prefers_same_suite_when_test_id_missing() -> None:
+    t = datetime(2026, 5, 1, 11, 1, 10, tzinfo=UTC)
+    events = [
+        GrpcEvent(
+            time=t,
+            seq=1,
+            level="debug",
+            event_kind="grpc",
+            action="setRFContext",
+            status="succeeded",
+            error_type="",
+            msg="",
+            test_id="s1-s1-s1-t3",
+            test_name="Test A",
+            suite_id="s1-s1-s1",
+            suite_name="Suite A",
+            raw="{}",
+        ),
+        GrpcEvent(
+            time=t,
+            seq=2,
+            level="error",
+            event_kind="grpc_error",
+            action="click",
+            status="failed",
+            error_type="TimeoutError",
+            msg="suite-matched",
+            test_id=None,
+            test_name=None,
+            suite_id="s1-s1-s1",
+            suite_name="Suite A",
+            raw="{}",
+        ),
+        GrpcEvent(
+            time=t,
+            seq=3,
+            level="error",
+            event_kind="grpc_error",
+            action="click",
+            status="failed",
+            error_type="TimeoutError",
+            msg="suite-mismatch",
+            test_id=None,
+            test_name=None,
+            suite_id="s1-s1-other",
+            suite_name="Suite B",
+            raw="{}",
+        ),
+    ]
+
+    errors = filter_errors_for_test(
+        events,
+        test_id="s1-s1-s1-t3",
+        start_time="2026-05-01T11:01:09.500Z",
+        end_time="2026-05-01T11:01:10.500Z",
+    )
+
+    seqs = {e.seq for e in errors}
+    assert 2 in seqs
+    assert 3 not in seqs

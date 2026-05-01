@@ -13,8 +13,8 @@ from robotframework_analysis.mcp.playwright.log_parser import (
     GrpcEvent,
     PlaywrightLogEvent,
     PwApiEvent,
-    filter_errors_for_test,
-    filter_events_for_test,
+    filter_errors_for_test_with_match_info,
+    filter_events_for_test_with_match_info,
     parse_log_file,
 )
 
@@ -41,6 +41,7 @@ class PlaywrightEventItem(BaseModel):
     suite_id: str | None = None
     msg: str | None = None
     text: str | None = None  # pw:api line text
+    matched_by: str  # "test_id" | "suite_id" | "time_only" | "anomaly"
 
 
 class PlaywrightErrorItem(BaseModel):
@@ -50,6 +51,7 @@ class PlaywrightErrorItem(BaseModel):
     action: str
     msg: str
     test_id: str | None = None
+    matched_by: str  # "test_id" | "suite_id" | "time_only" | "anomaly"
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +84,10 @@ _cache = _LogCache()
 # ---------------------------------------------------------------------------
 
 
-def _serialise_event(event: PlaywrightLogEvent) -> PlaywrightEventItem:
+def _serialise_event(
+    event: PlaywrightLogEvent,
+    matched_by: str,
+) -> PlaywrightEventItem:
     if isinstance(event, GrpcEvent):
         return PlaywrightEventItem(
             time=event.time.isoformat(),
@@ -95,6 +100,7 @@ def _serialise_event(event: PlaywrightLogEvent) -> PlaywrightEventItem:
             test_id=event.test_id,
             suite_id=event.suite_id,
             msg=event.msg or None,
+            matched_by=matched_by,
         )
     if not isinstance(event, PwApiEvent):  # pragma: no cover
         msg = f"Unexpected event type: {type(event)}"
@@ -103,6 +109,7 @@ def _serialise_event(event: PlaywrightLogEvent) -> PlaywrightEventItem:
         time=event.time.isoformat(),
         type="pwapi",
         text=event.text,
+        matched_by=matched_by,
     )
 
 
@@ -137,9 +144,9 @@ def get_playwright_events_for_test(
         end_time,
     )
     all_events = _cache.get(log_file)
-    filtered = filter_events_for_test(all_events, test_id, start_time, end_time)
+    filtered = filter_events_for_test_with_match_info(all_events, test_id, start_time, end_time)
     logger.info("get_playwright_events_for_test: returning %d event(s)", len(filtered))
-    return [_serialise_event(e) for e in filtered]
+    return [_serialise_event(event, matched_by) for event, matched_by in filtered]
 
 
 @mcp.tool()
@@ -168,7 +175,7 @@ def get_playwright_errors_for_test(
         end_time,
     )
     all_events = _cache.get(log_file)
-    errors = filter_errors_for_test(all_events, test_id, start_time, end_time)
+    errors = filter_errors_for_test_with_match_info(all_events, test_id, start_time, end_time)
     logger.info("get_playwright_errors_for_test: returning %d error(s)", len(errors))
     return [
         PlaywrightErrorItem(
@@ -178,8 +185,9 @@ def get_playwright_errors_for_test(
             action=e.action,
             msg=e.msg,
             test_id=e.test_id,
+            matched_by=matched_by,
         )
-        for e in errors
+        for e, matched_by in errors
     ]
 
 

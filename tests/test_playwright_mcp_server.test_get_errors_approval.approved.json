@@ -2,6 +2,7 @@
     {
         "action": "",
         "error_type": "Error",
+        "matched_by": "test_id",
         "msg": "page.pdf: Failed to parse parameter value: other\n    at savePageAsPdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9816:20)\n    at PlaywrightServer.pdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9916:32)",
         "seq": 127,
         "test_id": "s1-s1-s1-t3",

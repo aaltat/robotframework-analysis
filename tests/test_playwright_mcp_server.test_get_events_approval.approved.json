@@ -3,6 +3,7 @@
         "action": "setRFContext",
         "event_kind": "grpc",
         "level": "debug",
+        "matched_by": "time_only",
         "seq": 119,
         "status": "started",
         "time": "2026-04-30T18:07:24.149000+00:00",
@@ -12,6 +13,7 @@
         "action": "setRFContext",
         "event_kind": "grpc",
         "level": "debug",
+        "matched_by": "test_id",
         "seq": 120,
         "status": "succeeded",
         "test_id": "s1-s1-s1-t3",
@@ -22,6 +24,7 @@
         "action": "getBrowserCatalog",
         "event_kind": "grpc",
         "level": "info",
+        "matched_by": "test_id",
         "seq": 121,
         "status": "started",
         "test_id": "s1-s1-s1-t3",
@@ -29,11 +32,13 @@
         "type": "grpc"
     },
     {
+        "matched_by": "time_only",
         "text": "pw:api => page.title started",
         "time": "2026-04-30T18:07:24.151000+00:00",
         "type": "pwapi"
     },
     {
+        "matched_by": "time_only",
         "text": "pw:api <= page.title succeeded",
         "time": "2026-04-30T18:07:24.155000+00:00",
         "type": "pwapi"
@@ -42,6 +47,7 @@
         "action": "getBrowserCatalog",
         "event_kind": "grpc",
         "level": "info",
+        "matched_by": "test_id",
         "seq": 122,
         "status": "succeeded",
         "test_id": "s1-s1-s1-t3",
@@ -52,6 +58,7 @@
         "action": "savePageAsPdf",
         "event_kind": "grpc",
         "level": "info",
+        "matched_by": "test_id",
         "seq": 123,
         "status": "started",
         "test_id": "s1-s1-s1-t3",
@@ -59,11 +66,13 @@
         "type": "grpc"
     },
     {
+        "matched_by": "time_only",
         "text": "pw:api => page.pdf started",
         "time": "2026-04-30T18:07:24.166000+00:00",
         "type": "pwapi"
     },
     {
+        "matched_by": "time_only",
         "text": "pw:api <= page.pdf failed",
         "time": "2026-04-30T18:07:24.168000+00:00",
         "type": "pwapi"
@@ -72,6 +81,7 @@
         "action": "savePageAsPdf",
         "event_kind": "grpc",
         "level": "info",
+        "matched_by": "test_id",
         "seq": 126,
         "status": "failed",
         "test_id": "s1-s1-s1-t3",
@@ -82,6 +92,7 @@
         "action": "",
         "event_kind": "grpc_error",
         "level": "error",
+        "matched_by": "test_id",
         "msg": "page.pdf: Failed to parse parameter value: other\n    at savePageAsPdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9816:20)\n    at PlaywrightServer.pdf (/home/runner/work/robotframework-browser/robotframework-browser/Browser/wrapper/index.js:9916:32)",
         "seq": 127,
         "status": "failed",
@@ -90,6 +101,7 @@
         "type": "grpc"
     },
     {
+        "matched_by": "time_only",
         "text": "pw:api   element is visible, enabled and stable",
         "time": "2026-04-30T18:07:24.170000+00:00",
         "type": "pwapi"

@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class PwApiEvent:
 
 
 PlaywrightLogEvent = GrpcEvent | PwApiEvent
+MatchSource = str  # "test_id" | "suite_id" | "time_only" | "anomaly"
 
 # ---------------------------------------------------------------------------
 # Parsing
@@ -155,8 +157,135 @@ def _parse_window(start_time: str, end_time: str) -> tuple[datetime, datetime]:
     return _parse_timestamp(start_time), _parse_timestamp(end_time)
 
 
+def _target_suite_ids(
+    events: Sequence[PlaywrightLogEvent],
+    test_id: str,
+    start: datetime,
+    end: datetime,
+) -> set[str]:
+    suite_ids: set[str] = set()
+    for event in events:
+        if not isinstance(event, GrpcEvent):
+            continue
+        if event.time < start or event.time > end:
+            continue
+        if event.test_id != test_id:
+            continue
+        if event.suite_id:
+            suite_ids.add(event.suite_id)
+    return suite_ids
+
+
+def _match_source_for_grpc(
+    event: GrpcEvent,
+    test_id: str,
+    target_suite_ids: set[str],
+) -> MatchSource | None:
+    if event.test_id:
+        if event.test_id != test_id:
+            return None
+        # test_id matches — check for suite_id conflict
+        if event.suite_id and target_suite_ids and event.suite_id not in target_suite_ids:
+            return "anomaly"
+        return "test_id"
+    if event.suite_id and target_suite_ids:
+        if event.suite_id in target_suite_ids:
+            return "suite_id"
+        return None
+    return "time_only"
+
+
+def filter_events_for_test_with_match_info(
+    events: Sequence[PlaywrightLogEvent],
+    test_id: str,
+    start_time: str,
+    end_time: str,
+) -> list[tuple[PlaywrightLogEvent, MatchSource]]:
+    """Return events in test window with correlation source metadata."""
+    start, end = _parse_window(start_time, end_time)
+    target_suite_ids = _target_suite_ids(events, test_id, start, end)
+    result: list[tuple[PlaywrightLogEvent, MatchSource]] = []
+    matched_test_id = 0
+    matched_suite = 0
+    matched_time_only = 0
+    for event in events:
+        if event.time < start or event.time > end:
+            continue
+        if isinstance(event, PwApiEvent):
+            result.append((event, "time_only"))
+            matched_time_only += 1
+            continue
+        match_source = _match_source_for_grpc(event, test_id, target_suite_ids)
+        if match_source is None:
+            continue
+        if match_source == "test_id":
+            matched_test_id += 1
+        elif match_source == "suite_id":
+            matched_suite += 1
+        else:
+            matched_time_only += 1
+        result.append((event, match_source))
+    logger.info(
+        (
+            "filter_events_for_test: %d/%d event(s) matched for test_id=%s "
+            "(%d matched id, %d matched suite, %d time-only)"
+        ),
+        len(result),
+        len(events),
+        test_id,
+        matched_test_id,
+        matched_suite,
+        matched_time_only,
+    )
+    return result
+
+
+def filter_errors_for_test_with_match_info(
+    events: Sequence[PlaywrightLogEvent],
+    test_id: str,
+    start_time: str,
+    end_time: str,
+) -> list[tuple[GrpcEvent, MatchSource]]:
+    """Return grpc_error events in test window with correlation source metadata."""
+    start, end = _parse_window(start_time, end_time)
+    target_suite_ids = _target_suite_ids(events, test_id, start, end)
+    result: list[tuple[GrpcEvent, MatchSource]] = []
+    matched_id = 0
+    matched_suite = 0
+    no_context = 0
+    for event in events:
+        if not isinstance(event, GrpcEvent):
+            continue
+        if event.event_kind != "grpc_error":
+            continue
+        if event.time < start or event.time > end:
+            continue
+        match_source = _match_source_for_grpc(event, test_id, target_suite_ids)
+        if match_source is None:
+            continue
+        if match_source == "test_id":
+            matched_id += 1
+        elif match_source == "suite_id":
+            matched_suite += 1
+        else:
+            no_context += 1
+        result.append((event, match_source))
+    logger.info(
+        (
+            "filter_errors_for_test: %d error(s) for test_id=%s "
+            "(%d matched id, %d matched suite, %d no-context)"
+        ),
+        len(result),
+        test_id,
+        matched_id,
+        matched_suite,
+        no_context,
+    )
+    return result
+
+
 def filter_events_for_test(
-    events: list[PlaywrightLogEvent],
+    events: Sequence[PlaywrightLogEvent],
     test_id: str,
     start_time: str,
     end_time: str,
@@ -170,25 +299,12 @@ def filter_events_for_test(
     JSON events that carry a *different* ``test_id`` are excluded even if
     they fall in the same time range.
     """
-    start, end = _parse_window(start_time, end_time)
-    result: list[PlaywrightLogEvent] = []
-    for event in events:
-        if event.time < start or event.time > end:
-            continue
-        if isinstance(event, GrpcEvent) and event.test_id and event.test_id != test_id:
-            continue
-        result.append(event)
-    logger.info(
-        "filter_events_for_test: %d/%d event(s) matched for test_id=%s",
-        len(result),
-        len(events),
-        test_id,
-    )
-    return result
+    matched = filter_events_for_test_with_match_info(events, test_id, start_time, end_time)
+    return [event for event, _ in matched]
 
 
 def filter_errors_for_test(
-    events: list[PlaywrightLogEvent],
+    events: Sequence[PlaywrightLogEvent],
     test_id: str,
     start_time: str,
     end_time: str,
@@ -198,29 +314,5 @@ def filter_errors_for_test(
     Errors that carry a different ``test_id`` are excluded.
     Errors without any ``test_id`` are included (context may not have been set).
     """
-    start, end = _parse_window(start_time, end_time)
-    result: list[GrpcEvent] = []
-    matched_id = 0
-    no_context = 0
-    for event in events:
-        if not isinstance(event, GrpcEvent):
-            continue
-        if event.event_kind != "grpc_error":
-            continue
-        if event.time < start or event.time > end:
-            continue
-        if event.test_id and event.test_id != test_id:
-            continue
-        if event.test_id == test_id:
-            matched_id += 1
-        else:
-            no_context += 1
-        result.append(event)
-    logger.info(
-        "filter_errors_for_test: %d error(s) for test_id=%s (%d matched id, %d no-context)",
-        len(result),
-        test_id,
-        matched_id,
-        no_context,
-    )
-    return result
+    matched = filter_errors_for_test_with_match_info(events, test_id, start_time, end_time)
+    return [event for event, _ in matched]

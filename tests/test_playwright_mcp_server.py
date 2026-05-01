@@ -46,6 +46,13 @@ def test_get_events_includes_pwapi_lines() -> None:
     assert len(pwapi) >= 2
 
 
+def test_get_events_includes_match_source_metadata() -> None:
+    items = get_playwright_events_for_test(_FIXTURE, _TEST_ID, _START, _END)
+    matched_by_values = {i.matched_by for i in items}
+    assert "test_id" in matched_by_values
+    assert "time_only" in matched_by_values
+
+
 def test_get_events_approval() -> None:
     items = get_playwright_events_for_test(_FIXTURE, _TEST_ID, _START, _END)
     verify_as_json([i.model_dump(exclude_none=True) for i in items])
@@ -69,6 +76,13 @@ def test_get_errors_wide_window_includes_no_context_error() -> None:
     seqs = {e.seq for e in errors}
     assert 127 in seqs
     assert 252 in seqs
+
+
+def test_get_errors_includes_match_source_metadata() -> None:
+    errors = get_playwright_errors_for_test(_FIXTURE, _TEST_ID, _START, "2026-04-30T18:07:25.100Z")
+    by_seq = {e.seq: e for e in errors}
+    assert by_seq[127].matched_by == "test_id"
+    assert by_seq[252].matched_by == "time_only"
 
 
 def test_get_errors_approval() -> None:
