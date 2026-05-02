@@ -52,6 +52,41 @@ _Avoid_: low-priority anomaly handling
 test_id and suite_id are treated as independent values emitted separately by upstream; we compare what was emitted and never derive one from the other algorithmically.
 _Avoid_: deriving suite_id from test_id prefix
 
+**OCR-Authoritative Disagreement Policy**:
+When OCR text extraction and multimodal image interpretation disagree, OCR is treated as authoritative for diagnosis in this domain.
+_Avoid_: treating multimodal interpretation as equal authority for textual evidence
+
+**Fixed OCR Quality Threshold Policy**:
+OCR fallback decisions use fixed, deterministic quality thresholds configured in code or settings; adaptive per-project threshold learning is out of scope for the first version.
+_Avoid_: drifting thresholds between runs
+
+**Screenshot No-Evidence Policy**:
+When OCR quality is below threshold and no multimodal fallback is available, the screenshot analyst returns `no_evidence` with a reason code; no root cause is guessed from low-quality image data.
+_Avoid_: speculative diagnosis from unreadable screenshots
+
+**Screenshot Path Provenance**:
+The screenshot analyst sub-agent receives screenshot paths directly from the orchestrator (already resolved by the RF results pipeline); it does not re-derive paths via an MCP tool. However, the sub-agent may call `get_failure_detail` to get broader failure context (log messages, keyword tree) that helps interpret what the screenshot shows.
+_Avoid_: re-resolving paths that are already verified by the results pipeline
+
+**Screenshot Analysis Granularity**:
+The screenshot analyst is invoked once per error group, using the representative test's screenshots; per-test invocation is out of scope.
+_Avoid_: per-test screenshot analysis within a group
+
+**Screenshot Skip Policy**:
+When the representative test has no screenshot paths, the orchestrator skips the screenshot analyst entirely and records `no_screenshots` as the reason; it does not call the sub-agent with an empty list.
+_Avoid_: calling the screenshot analyst with no input
+
+**Screenshot Analyst Output Contract**:
+The screenshot analyst returns one JSON object per error group, synthesizing findings across all screenshots for that group; per-screenshot output is out of scope. The agreed shape is: `test_id`, `screenshot_text`, `visible_error`, `failure_area` (one of `auth | navigation | validation | network | dialog | unknown`), `confidence` (`high | medium | low | no_evidence`), `evidence_source` (`ocr | multimodal | none`), and `reason` (reason code when `no_evidence`, e.g. `no_screenshots | screenshot_unreadable`, otherwise null).
+_Avoid_: returning one item per screenshot
+
+**Screenshot Confidence Mapping**:
+- `high`: OCR text contains a visible error message that semantically matches the RF failure message or a known error keyword (`error`, `failed`, `invalid`, `denied`, `timeout`).
+- `medium`: OCR text is present and plausible but does not directly match the RF failure (e.g. a generic dialog is visible).
+- `low`: OCR quality passed threshold but extracted text has no clear failure signal; or multimodal was used and found only a weak visual cue.
+- `no_evidence`: no screenshots, unreadable image, or OCR below threshold with no multimodal fallback available.
+_Avoid_: using `high` confidence when screenshot text does not correlate with the RF failure
+
 ## Relationships
 
 - A **Correlation Policy** defines which **Match Source** can be used and in which order.
@@ -64,6 +99,14 @@ _Avoid_: deriving suite_id from test_id prefix
 - A **Correlation Anomaly** is included evidence plus a diagnostic signal.
 - A **Strong Suspect Marker** elevates anomaly visibility for debugging.
 - **Independent Field Interpretation** means we compare emitted values; structural derivation is out of scope.
+- **OCR-Authoritative Disagreement Policy** defines conflict resolution between screenshot evidence extractors.
+- **Fixed OCR Quality Threshold Policy** keeps screenshot routing deterministic and testable.
+- **Screenshot No-Evidence Policy** prevents false diagnosis from unreadable images.
+- **Screenshot Path Provenance** avoids duplicating resolution logic that lives in the results pipeline.
+- **Screenshot Analysis Granularity** aligns screenshot analysis with the error group model, not per-test.
+- **Screenshot Skip Policy** prevents wasted sub-agent calls when no visual evidence exists.
+- **Screenshot Analyst Output Contract** keeps the orchestrator's merge logic consistent across all analyst sub-agents.
+- **Screenshot Confidence Mapping** defines when screenshot evidence is strong enough to include in the final report.
 - An **ADR (Architecture Decision Record)** records why a **Correlation Policy** was chosen.
 
 ## Example dialogue

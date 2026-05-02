@@ -5,7 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 
-from robotframework_analysis.agent.delegate import _SYSTEM_PROMPT, analyze_playwright_failures
+from robotframework_analysis.agent.delegate import (
+    _SYSTEM_PROMPT,
+    analyze_playwright_failures,
+    analyze_screenshot_failures,
+)
 
 
 def _make_mock_ctx() -> object:
@@ -28,6 +32,10 @@ def test_system_prompt_mentions_analyze_failures() -> None:
 
 def test_system_prompt_mentions_analyze_playwright_failures() -> None:
     assert "analyze_playwright_failures" in _SYSTEM_PROMPT
+
+
+def test_system_prompt_mentions_analyze_screenshot_failures() -> None:
+    assert "analyze_screenshot_failures" in _SYSTEM_PROMPT
 
 
 def test_system_prompt_mentions_confidence() -> None:
@@ -101,3 +109,59 @@ def test_analyze_playwright_failures_skips_group_when_times_missing() -> None:
     )
     results = json.loads(result_json)
     assert results == []
+
+
+# ---------------------------------------------------------------------------
+# analyze_screenshot_failures — skip and routing logic
+# ---------------------------------------------------------------------------
+
+
+def test_analyze_screenshot_failures_skips_group_when_no_screenshots() -> None:
+    """A group with empty screenshot_paths list must be skipped."""
+    groups = [
+        {
+            "group_id": 1,
+            "test_id": "s1-t1",
+            "representative_test": "Suite / Test",
+            "suite_name": "Suite",
+            "test_name": "Test",
+            "screenshot_paths": [],
+        }
+    ]
+    result_json = asyncio.run(
+        analyze_screenshot_failures(_make_mock_ctx(), "/tmp/output.xml", _rf_report(groups))  # type: ignore[arg-type]
+    )
+    results = json.loads(result_json)
+    assert len(results) == 1
+    item = json.loads(results[0])
+    assert item["confidence"] == "no_evidence"
+    assert item["reason"] == "no_screenshots"
+    assert item["test_id"] is None
+
+
+def test_analyze_screenshot_failures_skips_group_when_screenshots_key_missing() -> None:
+    """A group without screenshot_paths key is treated as no screenshots."""
+    groups = [
+        {
+            "group_id": 1,
+            "test_id": "s1-t1",
+            "representative_test": "Suite / Test",
+            "suite_name": "Suite",
+            "test_name": "Test",
+            # no screenshot_paths key
+        }
+    ]
+    result_json = asyncio.run(
+        analyze_screenshot_failures(_make_mock_ctx(), "/tmp/output.xml", _rf_report(groups))  # type: ignore[arg-type]
+    )
+    results = json.loads(result_json)
+    item = json.loads(results[0])
+    assert item["confidence"] == "no_evidence"
+    assert item["reason"] == "no_screenshots"
+
+
+def test_analyze_screenshot_failures_returns_empty_on_bad_json() -> None:
+    result_json = asyncio.run(
+        analyze_screenshot_failures(_make_mock_ctx(), "/tmp/output.xml", "not json")  # type: ignore[arg-type]
+    )
+    assert result_json == "[]"

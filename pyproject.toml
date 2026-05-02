@@ -11,6 +11,8 @@ requires-python = ">=3.12.11"
 dependencies = [
     "fastmcp>=3.2.4",
     "httpx>=0.28.1",
+    "pillow>=10.0.0",
+    "pytesseract>=0.3.13",
     "pydantic-ai>=1.86.0",
     "robotframework>=7.1.1",
 ]
@@ -115,6 +117,10 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = ["robot", "robot.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pytesseract"]
 ignore_missing_imports = true
 
 [dependency-groups]
