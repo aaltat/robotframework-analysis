@@ -2995,6 +2995,7 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "python-dotenv" },
     { name = "ruff" },
 ]
 
@@ -3021,6 +3022,7 @@ requires-dist = [
     { name = "pytesseract", specifier = ">=0.3.13" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
+    { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1.2.2" },
     { name = "robotframework", specifier = ">=7.1.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.11" },
 ]

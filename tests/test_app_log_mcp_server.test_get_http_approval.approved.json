@@ -1,0 +1,167 @@
+{
+    "events": [
+        {
+            "content_length": 29613,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 2.221,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:52.798000+00:00",
+            "url": "/prefilled_email_form.html"
+        },
+        {
+            "content_length": 2845,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.564,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:52.805000+00:00",
+            "url": "/test-app-logger.js"
+        },
+        {
+            "content_length": 2773,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 1.258,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:52.806000+00:00",
+            "url": "/robot-framework.svg"
+        },
+        {
+            "event": "http",
+            "method": "POST",
+            "response_time_ms": 1.878,
+            "status": 204,
+            "timestamp": "2026-05-11T19:26:52.840000+00:00",
+            "url": "/api/log/event"
+        },
+        {
+            "event": "http",
+            "method": "POST",
+            "response_time_ms": 0.226,
+            "status": 204,
+            "timestamp": "2026-05-11T19:26:52.844000+00:00",
+            "url": "/api/log/context"
+        },
+        {
+            "content_length": 588,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.327,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:52.884000+00:00",
+            "url": "/dist/"
+        },
+        {
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.414,
+            "status": 304,
+            "timestamp": "2026-05-11T19:26:52.886000+00:00",
+            "url": "/test-app-logger.js"
+        },
+        {
+            "content_length": 1366148,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.794,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:52.888000+00:00",
+            "url": "/dist/index.js"
+        },
+        {
+            "event": "http",
+            "method": "POST",
+            "response_time_ms": 0.227,
+            "status": 204,
+            "timestamp": "2026-05-11T19:26:52.925000+00:00",
+            "url": "/api/log/event"
+        },
+        {
+            "event": "http",
+            "method": "POST",
+            "response_time_ms": 0.082,
+            "status": 204,
+            "timestamp": "2026-05-11T19:26:54.144000+00:00",
+            "url": "/api/log/context"
+        },
+        {
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.092,
+            "status": 304,
+            "timestamp": "2026-05-11T19:26:54.152000+00:00",
+            "url": "/dist/"
+        },
+        {
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.14,
+            "status": 304,
+            "timestamp": "2026-05-11T19:26:54.154000+00:00",
+            "url": "/dist/index.js"
+        },
+        {
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.365,
+            "status": 304,
+            "timestamp": "2026-05-11T19:26:54.154000+00:00",
+            "url": "/test-app-logger.js"
+        },
+        {
+            "event": "http",
+            "method": "POST",
+            "response_time_ms": 0.121,
+            "status": 204,
+            "timestamp": "2026-05-11T19:26:54.156000+00:00",
+            "url": "/api/log/event"
+        },
+        {
+            "content_length": 20,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.865,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:54.661000+00:00",
+            "url": "/api/get/json"
+        },
+        {
+            "content_length": 20,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.197,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:55.160000+00:00",
+            "url": "/api/get/json"
+        },
+        {
+            "content_length": 20,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.167,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:55.661000+00:00",
+            "url": "/api/get/json"
+        },
+        {
+            "content_length": 20,
+            "event": "http",
+            "method": "GET",
+            "response_time_ms": 0.166,
+            "status": 200,
+            "timestamp": "2026-05-11T19:26:56.161000+00:00",
+            "url": "/api/get/json"
+        },
+        {
+            "event": "http",
+            "method": "POST",
+            "response_time_ms": 0.124,
+            "status": 204,
+            "timestamp": "2026-05-11T19:26:56.210000+00:00",
+            "url": "/api/log/context"
+        }
+    ],
+    "server_started": true,
+    "total_events_in_log": 43
+}

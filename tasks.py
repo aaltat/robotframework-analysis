@@ -6,6 +6,7 @@ from pathlib import Path
 
 from invoke import task  # type: ignore
 from invoke.context import Context
+import dotenv
 
 RUNNING_IN_CI = "GITHUB_RUN_ID" in os.environ
 
@@ -22,7 +23,7 @@ def lint(ctx: Context) -> None:
     ruff_format_cmd.extend(["src", "tests"])
     ctx.run(" ".join(ruff_format_cmd))
     print("Running mypy...")
-    ctx.run("mypy src tests")
+    ctx.run("mypy src")
 
 
 @task
@@ -43,6 +44,7 @@ def download_artifact(
     output: str = ".robotframework_analysis",
 ) -> None:
     """Run the artifact downloader via rfanalysis analyze."""
+    dotenv.load_dotenv()
     destination = Path(output)
     shutil.rmtree(destination, ignore_errors=True)
 

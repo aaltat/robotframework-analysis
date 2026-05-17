@@ -1,0 +1,43 @@
+{"timestamp":"2026-05-11T19:26:51.485Z","event":"server_start","url":"http://localhost:55343"}
+{"timestamp":"2026-05-11T19:26:52.798Z","event":"http","method":"GET","url":"/prefilled_email_form.html","status":200,"contentLength":29613,"responseTimeMs":2.221}
+{"timestamp":"2026-05-11T19:26:52.805Z","event":"http","method":"GET","url":"/test-app-logger.js","status":200,"contentLength":2845,"responseTimeMs":0.564}
+{"timestamp":"2026-05-11T19:26:52.806Z","event":"http","method":"GET","url":"/robot-framework.svg","status":200,"contentLength":2773,"responseTimeMs":1.258}
+{"timestamp":"2026-05-11T19:26:52.839Z","url":"http://localhost:55343/prefilled_email_form.html","event":"load","title":"prefilled_email_form.html"}
+{"timestamp":"2026-05-11T19:26:52.840Z","event":"http","method":"POST","url":"/api/log/event","status":204,"contentLength":null,"responseTimeMs":1.878}
+{"timestamp":"2026-05-11T19:26:52.844Z","event":"start_suite","id":"s1-s1-s1","name":"Basic Getters","pid":20034}
+{"timestamp":"2026-05-11T19:26:52.844Z","event":"http","method":"POST","url":"/api/log/context","status":204,"contentLength":null,"responseTimeMs":0.226}
+{"timestamp":"2026-05-11T19:26:52.884Z","event":"http","method":"GET","url":"/dist/","status":200,"contentLength":588,"responseTimeMs":0.327}
+{"timestamp":"2026-05-11T19:26:52.886Z","event":"http","method":"GET","url":"/test-app-logger.js","status":304,"contentLength":null,"responseTimeMs":0.414}
+{"timestamp":"2026-05-11T19:26:52.888Z","event":"http","method":"GET","url":"/dist/index.js","status":200,"contentLength":1366148,"responseTimeMs":0.794}
+{"timestamp":"2026-05-11T19:26:52.924Z","url":"http://localhost:55343/dist/#/","event":"load","title":"React App"}
+{"timestamp":"2026-05-11T19:26:52.925Z","event":"http","method":"POST","url":"/api/log/event","status":204,"contentLength":null,"responseTimeMs":0.227}
+{"timestamp":"2026-05-11T19:26:52.927Z","event":"start_test","id":"s1-s1-s1-t1","name":"Get Text","pid":20034}
+{"timestamp":"2026-05-11T19:26:52.927Z","event":"http","method":"POST","url":"/api/log/context","status":204,"contentLength":null,"responseTimeMs":0.133}
+{"timestamp":"2026-05-11T19:26:52.953Z","event":"http","method":"GET","url":"/dist/","status":304,"contentLength":null,"responseTimeMs":0.162}
+{"timestamp":"2026-05-11T19:26:52.955Z","event":"http","method":"GET","url":"/dist/index.js","status":304,"contentLength":null,"responseTimeMs":0.185}
+{"timestamp":"2026-05-11T19:26:52.956Z","event":"http","method":"GET","url":"/test-app-logger.js","status":304,"contentLength":null,"responseTimeMs":0.449}
+{"timestamp":"2026-05-11T19:26:52.960Z","url":"http://localhost:55343/dist/#/","event":"load","title":"React App"}
+{"timestamp":"2026-05-11T19:26:52.961Z","event":"http","method":"POST","url":"/api/log/event","status":204,"contentLength":null,"responseTimeMs":0.221}
+{"timestamp":"2026-05-11T19:26:52.984Z","event":"end_test","id":"s1-s1-s1-t1","name":"Get Text","pid":20034,"status":"PASS"}
+{"timestamp":"2026-05-11T19:26:52.987Z","event":"start_test","id":"s1-s1-s1-t2","name":"Get Text Disabled","pid":20034}
+{"timestamp":"2026-05-11T19:26:52.987Z","event":"http","method":"POST","url":"/api/log/context","status":204,"contentLength":null,"responseTimeMs":0.091}
+{"timestamp":"2026-05-11T19:26:52.990Z","event":"http","method":"GET","url":"/enabled_disabled_fields_form.html","status":200,"contentLength":3115,"responseTimeMs":0.412}
+{"timestamp":"2026-05-11T19:26:52.992Z","event":"http","method":"GET","url":"/test-app-logger.js","status":304,"contentLength":null,"responseTimeMs":0.13}
+{"timestamp":"2026-05-11T19:26:52.993Z","url":"http://localhost:55343/enabled_disabled_fields_form.html","event":"load","title":"(root)/forms/enabled_disabled_fields_form.html"}
+{"timestamp":"2026-05-11T19:26:52.993Z","event":"http","method":"POST","url":"/api/log/event","status":204,"contentLength":null,"responseTimeMs":0.178}
+{"timestamp":"2026-05-11T19:26:54.058Z","event":"end_test","id":"s1-s1-s1-t2","name":"Get Text Disabled","pid":20034,"status":"PASS"}
+{"timestamp":"2026-05-11T19:26:54.144Z","event":"start_test","id":"s1-s1-s1-t5","name":"Get Text And Assert !=","pid":20034}
+{"timestamp":"2026-05-11T19:26:54.144Z","event":"http","method":"POST","url":"/api/log/context","status":204,"contentLength":null,"responseTimeMs":0.082}
+{"timestamp":"2026-05-11T19:26:54.152Z","event":"http","method":"GET","url":"/dist/","status":304,"contentLength":null,"responseTimeMs":0.092}
+{"timestamp":"2026-05-11T19:26:54.154Z","event":"http","method":"GET","url":"/dist/index.js","status":304,"contentLength":null,"responseTimeMs":0.14}
+{"timestamp":"2026-05-11T19:26:54.154Z","event":"http","method":"GET","url":"/test-app-logger.js","status":304,"contentLength":null,"responseTimeMs":0.365}
+{"timestamp":"2026-05-11T19:26:54.156Z","url":"http://localhost:55343/dist/#/","event":"load","title":"React App"}
+{"timestamp":"2026-05-11T19:26:54.156Z","event":"http","method":"POST","url":"/api/log/event","status":204,"contentLength":null,"responseTimeMs":0.121}
+{"timestamp":"2026-05-11T19:26:54.661Z","event":"http","method":"GET","url":"/api/get/json","status":200,"contentLength":"20","responseTimeMs":0.865}
+{"timestamp":"2026-05-11T19:26:55.160Z","event":"http","method":"GET","url":"/api/get/json","status":200,"contentLength":"20","responseTimeMs":0.197}
+{"timestamp":"2026-05-11T19:26:55.661Z","event":"http","method":"GET","url":"/api/get/json","status":200,"contentLength":"20","responseTimeMs":0.167}
+{"timestamp":"2026-05-11T19:26:56.161Z","event":"http","method":"GET","url":"/api/get/json","status":200,"contentLength":"20","responseTimeMs":0.166}
+{"timestamp":"2026-05-11T19:26:56.210Z","event":"end_test","id":"s1-s1-s1-t5","name":"Get Text And Assert !=","pid":20034,"status":"FAIL"}
+{"timestamp":"2026-05-11T19:26:56.210Z","event":"http","method":"POST","url":"/api/log/context","status":204,"contentLength":null,"responseTimeMs":0.124}
+{"timestamp":"2026-05-11T19:26:56.213Z","event":"start_test","id":"s1-s1-s1-t6","name":"Get Text Assert Validate","pid":20034}
+{"timestamp":"2026-05-11T19:27:07.392Z","event":"end_suite","id":"s1-s1","name":"02 Content Keywords","pid":20034,"status":"FAIL"}

@@ -105,8 +105,8 @@ class _FailedTestCollector:
                 test_name=str(test.name),
                 test_id=str(getattr(test, "id", "") or ""),
                 source=source,
-                start_time=str(getattr(test, "starttime", "") or ""),
-                end_time=str(getattr(test, "endtime", "") or ""),
+                start_time=str(test.start_time) if test.start_time else "",
+                end_time=str(test.end_time) if test.end_time else "",
                 message=str(test.message),
                 log_messages=_collect_log_messages(failing_keyword, str(test.message)),
                 keyword_leaf_lines=_build_keyword_leaf_lines(

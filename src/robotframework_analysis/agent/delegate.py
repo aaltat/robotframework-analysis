@@ -1,29 +1,49 @@
 import json
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic_ai import Agent, RunContext
 
+from robotframework_analysis.agent.app_log_analyst import (
+    AppLogAnalystContext,
+    build_app_log_analyst_agent,
+)
 from robotframework_analysis.agent.failure_analyst import build_analysis_agent
 from robotframework_analysis.agent.ocr import extract_text
-from robotframework_analysis.agent.playwright_log_analyst import build_playwright_analyst_agent
+from robotframework_analysis.agent.playwright_log_analyst import (
+    PlaywrightAnalystContext,
+    build_playwright_analyst_agent,
+)
 from robotframework_analysis.agent.screenshot_analyst import build_screenshot_analyst_agent
+
+
+@dataclass
+class DelegateContext:
+    """File paths injected as agent dependencies — never passed through the LLM."""
+
+    output_xml: str
+    playwright_log: str | None = None
+    app_log: str | None = None
+
 
 _SYSTEM_PROMPT = """\
 You are a Robot Framework test failure analyst. Delegate analysis to specialized \
 agents and synthesize their findings into a single report.
 
 Workflow:
-1. Call `analyze_failures` with the output.xml path to get RF-level error groups.
+1. Call `analyze_failures` to get RF-level error groups.
    Each group includes test_id, test_start_time, test_end_time, and screenshot_paths.
-2. If a playwright_log_file path is provided, call `analyze_playwright_failures`
-   with that path and the JSON from step 1 to get browser-level evidence for
-   each group.
-3. If screenshot_paths are present in any error group, call \
-`analyze_screenshot_failures` with the output_xml and the JSON from step 1 to \
+2. If Playwright browser log analysis is available, call `analyze_playwright_failures`
+   with the JSON from step 1 to get browser-level evidence for each group.
+3. If app server log analysis is available, call `analyze_app_log_failures`
+   with the JSON from step 1 to get server-side HTTP evidence for each group.
+4. If screenshot_paths are present in any error group, call \
+`analyze_screenshot_failures` with the JSON from step 1 to \
 get visual evidence from captured screenshots.
-4. Merge all reports: for each error group, combine the RF root cause, browser \
-evidence, and screenshot evidence (if any) and produce a concise, actionable summary.
+5. Merge all reports: for each error group, combine the RF root cause, browser \
+evidence, app-level HTTP evidence, and screenshot evidence (if any) and \
+produce a concise, actionable summary.
 
 For each error group in the final report:
 - State the RF root cause, the Playwright evidence, and the screenshot evidence side-by-side.
@@ -33,24 +53,22 @@ For each error group in the final report:
 
 Your final report should be clear and actionable for the development team.
 You will not do the analysis yourself, but delegate it to specialized agents.
+File paths are pre-configured — do NOT pass file path arguments to any tool.
 """
 
 logger = logging.getLogger("rf_analyst_orchestrator_agent")
 
-delegate_agent = Agent(
+delegate_agent: Agent[DelegateContext, str] = Agent(
     "ollama:gemma4:e4b",
     system_prompt=_SYSTEM_PROMPT,
+    deps_type=DelegateContext,
 )
 
 
 @delegate_agent.tool
-async def analyze_failures(_ctx: RunContext, output_xml: str) -> str:
-    """Analyse test result from Robot Framework output.xml file.
-
-    Args:
-        output_xml: Absolute or cwd-relative path to the Robot Framework
-            ``output.xml`` produced by a test run.
-    """
+async def analyze_failures(ctx: RunContext[DelegateContext]) -> str:
+    """Analyse test results from the pre-configured Robot Framework output.xml."""
+    output_xml = ctx.deps.output_xml
     logger.info("analyze_failures called: output_xml=%s", output_xml)
     agent = build_analysis_agent()
     result = await agent.run(f"Analyze the Robot Framework test results from: {output_xml}")
@@ -59,8 +77,7 @@ async def analyze_failures(_ctx: RunContext, output_xml: str) -> str:
 
 @delegate_agent.tool
 async def analyze_playwright_failures(
-    _ctx: RunContext,
-    playwright_log_file: str,
+    ctx: RunContext[DelegateContext],
     rf_error_groups_json: str,
 ) -> str:
     """Analyse browser-level evidence for each RF error group.
@@ -69,12 +86,14 @@ async def analyze_playwright_failures(
     list of per-group browser findings.
 
     Args:
-        playwright_log_file: Absolute or cwd-relative path to the
-            playwright-log-*.txt file from the same test run.
         rf_error_groups_json: The full JSON string returned by
             ``analyze_failures``, containing error groups with
             ``test_id``, ``test_start_time``, and ``test_end_time``.
     """
+    playwright_log_file = ctx.deps.playwright_log
+    if not playwright_log_file:
+        logger.info("analyze_playwright_failures: no playwright log configured")
+        return "[]"
     logger.info("analyze_playwright_failures called: log_file=%s", playwright_log_file)
     try:
         rf_report = json.loads(rf_error_groups_json)
@@ -119,11 +138,11 @@ async def analyze_playwright_failures(
             end_time,
         )
         prompt = (
-            f"Analyse browser failures for test_id={test_id} "
-            f"in log_file={playwright_log_file} "
-            f"window=[{start_time}, {end_time}]."
+            f"Analyse browser failures for test_id={test_id} window=[{start_time}, {end_time}]."
         )
-        group_result = await agent.run(prompt)
+        group_result = await agent.run(
+            prompt, deps=PlaywrightAnalystContext(log_file=playwright_log_file)
+        )
         results.append(group_result.output)
 
     return json.dumps(results)
@@ -131,8 +150,7 @@ async def analyze_playwright_failures(
 
 @delegate_agent.tool
 async def analyze_screenshot_failures(
-    _ctx: RunContext,
-    output_xml: str,
+    ctx: RunContext[DelegateContext],
     rf_error_groups_json: str,
 ) -> str:
     """Analyse screenshot evidence for each RF error group.
@@ -142,12 +160,11 @@ async def analyze_screenshot_failures(
     Groups without screenshot_paths are skipped with a no_screenshots reason.
 
     Args:
-        output_xml: Absolute or cwd-relative path to the Robot Framework
-            output.xml produced by a test run.
         rf_error_groups_json: The full JSON string returned by
             ``analyze_failures``, containing error groups with
             ``screenshot_paths``, ``suite_name``, and ``test_name``.
     """
+    output_xml = ctx.deps.output_xml
     logger.info("analyze_screenshot_failures called: output_xml=%s", output_xml)
     try:
         rf_report = json.loads(rf_error_groups_json)
@@ -225,26 +242,59 @@ async def analyze_screenshot_failures(
     return json.dumps(results)
 
 
-if __name__ == "__main__":
-    import argparse
+@delegate_agent.tool
+async def analyze_app_log_failures(
+    ctx: RunContext[DelegateContext],
+    rf_error_groups_json: str,
+) -> str:
+    """Analyse server-side HTTP evidence for each RF error group.
 
-    parser = argparse.ArgumentParser(description="Run the Robot Framework failure analysis agent.")
-    parser.add_argument(
-        "output_xml", help="Path to the Robot Framework output.xml file to analyze."
-    )
-    parser.add_argument(
-        "--playwright-log",
-        default=None,
-        help="Optional path to playwright-log-*.txt for browser-level analysis.",
-    )
-    args = parser.parse_args()
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
-    logger.info("Starting failure analysis for: %s", args.output_xml)
-    prompt = f"Analyze the Robot Framework test results from: {args.output_xml}"
-    if args.playwright_log:
-        prompt += f" Also analyse browser failures from: {args.playwright_log}"
-    result = delegate_agent.run_sync(prompt)
-    print(result.output)
+    Calls the app log analyst for each error group and returns a JSON list
+    of per-group HTTP findings.
+
+    Args:
+        rf_error_groups_json: The full JSON string returned by
+            ``analyze_failures``, containing error groups with ``test_id``.
+    """
+    app_log_file = ctx.deps.app_log
+    if not app_log_file:
+        logger.info("analyze_app_log_failures: no app log configured")
+        return "[]"
+    logger.info("analyze_app_log_failures called: log_file=%s", app_log_file)
+    try:
+        rf_report = json.loads(rf_error_groups_json)
+        groups = rf_report.get("error_groups", [])
+    except (json.JSONDecodeError, AttributeError):
+        logger.warning("analyze_app_log_failures: could not parse rf_error_groups_json")
+        return "[]"
+
+    agent = build_app_log_analyst_agent()
+    results = []
+    for group in groups:
+        test_id = group.get("test_id", "")
+        representative = group.get("representative_test", f"group {group.get('group_id', '?')}")
+        if not test_id:
+            logger.warning(
+                "analyze_app_log_failures: skipping group '%s' — test_id missing in RF report",
+                representative,
+            )
+            results.append(
+                json.dumps(
+                    {
+                        "test_id": None,
+                        "confidence": "no_evidence",
+                        "summary": "Skipped: test_id not available in RF report",
+                    }
+                )
+            )
+            continue
+        logger.info(
+            "analyze_app_log_failures: analysing %s (test_id=%s)",
+            representative,
+            test_id,
+        )
+        prompt = f"Analyse app-level failures for test_id={test_id}."
+        group_result = await agent.run(prompt, deps=AppLogAnalystContext(log_file=app_log_file))
+        results.append(group_result.output)
+
+    return json.dumps(results)

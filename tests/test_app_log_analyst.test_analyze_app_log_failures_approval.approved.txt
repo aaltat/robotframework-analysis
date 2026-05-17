@@ -1,0 +1,7 @@
+{
+  "test_id": "s1-s1-s1-t5",
+  "http_pattern": "polling",
+  "endpoint": "/api/get/json",
+  "confidence": "high",
+  "summary": "Test polled GET /api/get/json 4 times. Final response was 503."
+}

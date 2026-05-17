@@ -49,8 +49,32 @@ A test_id and suite_id conflict anomaly is treated as a strong signal that upstr
 _Avoid_: low-priority anomaly handling
 
 **Independent Field Interpretation**:
-test_id and suite_id are treated as independent values emitted separately by upstream; we compare what was emitted and never derive one from the other algorithmically.
-_Avoid_: deriving suite_id from test_id prefix
+In the Playwright log, test_id and suite_id are treated as independent values emitted separately by upstream; we compare what was emitted and never derive one from the other algorithmically. This scoping matters because the app log uses RF's own hierarchical ID convention (see **RF Hierarchical ID**), where reading the suite prefix from a test ID is parsing a known format, not performing structural inference.
+_Avoid_: deriving suite_id from test_id prefix in Playwright log correlation
+
+**RF Hierarchical ID**:
+Robot Framework's structured identifier convention for suites and tests. A test ID such as `s1-s1-s1-t5` embeds its suite ID (`s1-s1-s1`) as a prefix. The app log parser reads this known format to determine suite membership; this is not algorithmic inference but parsing an RF-defined structure.
+_Avoid_: computed suite_id, inferred suite
+
+**App Log**:
+The NDJSON file emitted by the Browser library's Node.js test-app server. Each line is a JSON object with a `timestamp` and `event` field. Event types include: `server_start`, `start_suite`, `end_suite`, `start_test`, `end_test`, `http`, `load`, `click`, `hover`.
+_Avoid_: test-app log, server log, node log
+
+**App Log State Machine**:
+The algorithm for attributing app log events to tests: walk the log in order, tracking the current active test via `start_test` / `end_test` events. Events between a `start_test` and its matching `end_test` belong to that test. Suite setup events (before the first `start_test`) and teardown events (after the last `end_test`) are attributed to the enclosing suite via **RF Hierarchical ID**.
+_Avoid_: time-window matching, event filtering
+
+**Suite Context Inclusion**:
+Suite setup events (between `start_suite` and the first `start_test`) and teardown events (between the last `end_test` and `end_suite`) are always included in the response for any test in that suite. This is unconditional — no caller opt-in is required.
+_Avoid_: optional suite context, setup-only inclusion
+
+**App Log Time-Range Fallback**:
+When `test_id` is provided but no matching `start_test` / `end_test` pair is found in the log (e.g. suite startup failure before RF context was injected), the app log tools fall back to returning events within a provided `start_time` / `end_time` window.
+_Avoid_: default fallback, unconditional time filtering
+
+**App Log Server Health Metadata**:
+Every app log tool response includes `server_started` (bool: whether a `server_start` event was found) and `total_events_in_log` (int: total parsed events). Callers use this to distinguish "server crashed before startup" from "quiet test window". This replaces per-event provenance for the app log (see ADR-0004).
+_Avoid_: per-event provenance on app log events, health flag
 
 **OCR-Authoritative Disagreement Policy**:
 When OCR text extraction and multimodal image interpretation disagree, OCR is treated as authoritative for diagnosis in this domain.
@@ -98,7 +122,11 @@ _Avoid_: using `high` confidence when screenshot text does not correlate with th
 - **Suite Membership** allows many tests to share one suite_id.
 - A **Correlation Anomaly** is included evidence plus a diagnostic signal.
 - A **Strong Suspect Marker** elevates anomaly visibility for debugging.
-- **Independent Field Interpretation** means we compare emitted values; structural derivation is out of scope.
+- **Independent Field Interpretation** is scoped to the Playwright log; it does not apply to **RF Hierarchical ID** parsing in the app log.
+- **RF Hierarchical ID** is used by **App Log State Machine** to determine suite membership for **Suite Context Inclusion**.
+- **App Log State Machine** is the primary attribution algorithm; **App Log Time-Range Fallback** activates only when no matching lifecycle pair is found in the log.
+- **Suite Context Inclusion** is unconditional — it always applies when **App Log State Machine** is used.
+- **App Log Server Health Metadata** gives callers a response-level signal about server startup failures, replacing per-event provenance for the app log (see **Mandatory Match Source** for why this differs from the Playwright approach, and ADR-0004).
 - **OCR-Authoritative Disagreement Policy** defines conflict resolution between screenshot evidence extractors.
 - **Fixed OCR Quality Threshold Policy** keeps screenshot routing deterministic and testable.
 - **Screenshot No-Evidence Policy** prevents false diagnosis from unreadable images.
