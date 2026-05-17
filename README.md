@@ -78,4 +78,3 @@ uv run pytest tests/ --ignore=tests/test_ocr.py -q      # unit tests (OCR needs 
 ```
 
 Tests use `pytest` with [approvaltests](https://github.com/approvals/ApprovalTests.Python) for agent output snapshots. Approved files live next to the test files as `*.approved.txt` / `*.approved.json`.
-
