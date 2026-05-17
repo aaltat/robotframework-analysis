@@ -4,9 +4,9 @@ import shutil
 import sys
 from pathlib import Path
 
+import dotenv
 from invoke import task  # type: ignore
 from invoke.context import Context
-import dotenv
 
 RUNNING_IN_CI = "GITHUB_RUN_ID" in os.environ
 
