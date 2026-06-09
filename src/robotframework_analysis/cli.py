@@ -32,6 +32,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to playwright-log-*.txt for browser-level analysis.",
     )
+    analyze.add_argument(
+        "--app-log",
+        default=None,
+        help="Optional path to the folder containing Browser library test-app NDJSON log files.",
+    )
     return parser
 
 
@@ -45,7 +50,7 @@ async def _run_analyze(artifact_url: str, output: Path | None = None) -> int:
     return 0
 
 
-def _run_delegate(output_xml: str, playwright_log: str | None) -> int:
+def _run_delegate(output_xml: str, playwright_log: str | None, app_log: str | None) -> int:
     from robotframework_analysis.agent.delegate import (  # noqa: PLC0415
         DelegateContext,
         delegate_agent,
@@ -59,12 +64,19 @@ def _run_delegate(output_xml: str, playwright_log: str | None) -> int:
 
     output_xml_abs = str(Path(output_xml).resolve())
     playwright_log_abs = str(Path(playwright_log).resolve()) if playwright_log else None
-    deps = DelegateContext(output_xml=output_xml_abs, playwright_log=playwright_log_abs)
+    app_log_dir_abs = str(Path(app_log).resolve()) if app_log else None
+    deps = DelegateContext(
+        output_xml=output_xml_abs,
+        playwright_log=playwright_log_abs,
+        app_log_dir=app_log_dir_abs,
+    )
 
     logger.info("Starting failure analysis for: %s", output_xml_abs)
     prompt = "Analyze the Robot Framework test failures."
     if playwright_log_abs:
         prompt += " Playwright browser log analysis is available."
+    if app_log_dir_abs:
+        prompt += " App server log analysis is available."
     result = delegate_agent.run_sync(prompt, deps=deps)
     print(result.output)
     return 0
@@ -78,7 +90,7 @@ def main() -> int:
         return asyncio.run(_run_analyze(args.artifact_url, args.output))
 
     if args.command == "analyze":
-        return _run_delegate(args.output_xml, args.playwright_log)
+        return _run_delegate(args.output_xml, args.playwright_log, args.app_log)
 
     parser.error(f"Unsupported command: {args.command}")
     return 2

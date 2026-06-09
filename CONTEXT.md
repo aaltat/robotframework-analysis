@@ -60,8 +60,22 @@ _Avoid_: computed suite_id, inferred suite
 The NDJSON file emitted by the Browser library's Node.js test-app server. Each line is a JSON object with a `timestamp` and `event` field. Event types include: `server_start`, `start_suite`, `end_suite`, `start_test`, `end_test`, `http`, `load`, `click`, `hover`.
 _Avoid_: test-app log, server log, node log
 
+**App Log Directory**:
+The folder passed via `--app-log` that contains one or more **App Log** files. In pabot runs each parallel worker writes its own `test-app-<pid>.log` file; in serial runs exactly one file exists. The directory is the stable artifact path — individual filenames are not predictable.
+_Avoid_: app log file path, test-app folder
+
+**App Log File Selection**:
+The algorithm that resolves a single **App Log** file from an **App Log Directory** for a given failing `test_id`. Evaluated per failing test group after RF error groups are known. Rules applied in order, scanning all files:
+- **Rule 0**: file contains `start_test id=<test_id>` OR `start_test name=<test_name>` → definitive match; stop scanning. ID match is preferred; name match is a fallback for pabot runs where the worker assigns a shallow RF Hierarchical ID (e.g. `s1-s1-s1-t45`) that differs from the deep merged `output.xml` ID (e.g. `s1-s2-s3-t45`). Name uniqueness within a single worker's log makes this safe.
+- **Rule 1**: file contains zero RF lifecycle events (`start_suite`/`end_suite`/`start_test`/`end_test`) AND has events within the test time window → fallback candidate; continue scanning.
+- **Rule 1.5**: file contains `start_suite id=<suite_id>` (via **RF Hierarchical ID**) but no `start_test id=<test_id>`, AND has events within the test time window → fallback candidate; continue scanning.
+- **Rule 2**: file contains `start_test` events but none match `test_id` → excluded, even if timestamps match.
+- **Rule 3**: no Rule 0/1/1.5 match across all files → `no_evidence` with reason `test_id_not_in_any_log`.
+Rule 0 always evicts all Rule 1/1.5 candidates found before it. When only fallback candidates remain: Rule 1.5 (suite context) beats Rule 1 (context-free). If multiple Rule 1.5 files tie, the one with the most events inside the time window is used.
+_Avoid_: file glob, latest-file heuristic, LLM file picking
+
 **App Log State Machine**:
-The algorithm for attributing app log events to tests: walk the log in order, tracking the current active test via `start_test` / `end_test` events. Events between a `start_test` and its matching `end_test` belong to that test. Suite setup events (before the first `start_test`) and teardown events (after the last `end_test`) are attributed to the enclosing suite via **RF Hierarchical ID**.
+The algorithm for attributing app log events to tests: walk the log in order, tracking the current active test via `start_test` / `end_test` events. Events between a `start_test` and its matching `end_test` belong to that test. Suite setup events (before the first `start_test`) and teardown events (after the last `end_test`) are attributed to the enclosing suite via **RF Hierarchical ID**. Lookup order: (1) match by `test_id`; (2) if no match, match by `test_name` (covers pabot merged-ID mismatch); (3) fall back to **App Log Time-Range Fallback**.
 _Avoid_: time-window matching, event filtering
 
 **Suite Context Inclusion**:
@@ -69,7 +83,7 @@ Suite setup events (between `start_suite` and the first `start_test`) and teardo
 _Avoid_: optional suite context, setup-only inclusion
 
 **App Log Time-Range Fallback**:
-When `test_id` is provided but no matching `start_test` / `end_test` pair is found in the log (e.g. suite startup failure before RF context was injected), the app log tools fall back to returning events within a provided `start_time` / `end_time` window.
+When `test_id` is provided but no matching `start_test` / `end_test` pair is found in the log (e.g. suite startup failure before RF context was injected), the app log tools fall back to returning events within a provided `start_time` / `end_time` window. When a file was selected via **App Log File Selection** Rule 1 or Rule 1.5, `start_time` and `end_time` are always injected into `AppLogAnalystContext` (via deps, not the LLM prompt) so the fallback can fire correctly.
 _Avoid_: default fallback, unconditional time filtering
 
 **App Log Server Health Metadata**:
@@ -124,6 +138,8 @@ _Avoid_: using `high` confidence when screenshot text does not correlate with th
 - A **Strong Suspect Marker** elevates anomaly visibility for debugging.
 - **Independent Field Interpretation** is scoped to the Playwright log; it does not apply to **RF Hierarchical ID** parsing in the app log.
 - **RF Hierarchical ID** is used by **App Log State Machine** to determine suite membership for **Suite Context Inclusion**.
+- **App Log Directory** contains one **App Log** file per pabot worker (or one file in serial runs).
+- **App Log File Selection** resolves the correct **App Log** file from an **App Log Directory** before **App Log State Machine** or **App Log Time-Range Fallback** can run.
 - **App Log State Machine** is the primary attribution algorithm; **App Log Time-Range Fallback** activates only when no matching lifecycle pair is found in the log.
 - **Suite Context Inclusion** is unconditional — it always applies when **App Log State Machine** is used.
 - **App Log Server Health Metadata** gives callers a response-level signal about server startup failures, replacing per-event provenance for the app log (see **Mandatory Match Source** for why this differs from the Playwright approach, and ADR-0004).

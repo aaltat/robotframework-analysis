@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 def _run_delegate_with_mock(
     output_xml: str,
     playwright_log: str | None,
+    app_log: str | None = None,
 ) -> tuple[str, object]:
     """Call _run_delegate with a mocked delegate_agent; return (prompt, deps)."""
     mock_result = MagicMock()
@@ -21,7 +22,7 @@ def _run_delegate_with_mock(
         mock_agent.run_sync.return_value = mock_result
         from robotframework_analysis.cli import _run_delegate
 
-        _run_delegate(output_xml, playwright_log)
+        _run_delegate(output_xml, playwright_log, app_log)
         prompt = mock_agent.run_sync.call_args[0][0]
         deps = mock_agent.run_sync.call_args.kwargs.get("deps")
         return prompt, deps
@@ -100,3 +101,31 @@ def test_build_parser_analyze_accepts_playwright_log() -> None:
         ["analyze", "output.xml", "--playwright-log", "playwright-log.txt"]
     )
     assert args.playwright_log == "playwright-log.txt"
+
+
+def test_build_parser_analyze_accepts_app_log() -> None:
+    from robotframework_analysis.cli import _build_parser
+
+    args = _build_parser().parse_args(["analyze", "output.xml", "--app-log", "test-app-logs"])
+    assert args.app_log == "test-app-logs"
+
+
+def test_delegate_resolves_relative_app_log_to_absolute(tmp_path, monkeypatch) -> None:
+    output_xml = tmp_path / "output.xml"
+    output_xml.touch()
+    app_log_dir = tmp_path / "test-app-logs"
+    app_log_dir.mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    _, deps = _run_delegate_with_mock("output.xml", None, "test-app-logs")
+
+    assert deps.app_log_dir == str(app_log_dir)
+
+
+def test_delegate_omits_app_log_when_not_given(tmp_path) -> None:
+    output_xml = tmp_path / "output.xml"
+    output_xml.touch()
+
+    _, deps = _run_delegate_with_mock(str(output_xml), None, None)
+
+    assert deps.app_log_dir is None

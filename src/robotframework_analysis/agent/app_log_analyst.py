@@ -18,9 +18,12 @@ from robotframework_analysis.mcp.app_log.server import (
 
 @dataclass
 class AppLogAnalystContext:
-    """Log file path injected as agent dependencies — never passed through the LLM."""
+    """Injected as agent dependencies — never passed through the LLM."""
 
     log_file: str
+    start_time: str | None = None
+    end_time: str | None = None
+    test_name: str = ""
 
 
 _SYSTEM_PROMPT = """\
@@ -78,7 +81,13 @@ def build_app_log_analyst_agent(
         end_time: str | None = None,
     ) -> dict[str, Any]:
         """Return HTTP events from the app log attributed to test_id."""
-        return _mcp_get_http(ctx.deps.log_file, test_id, start_time, end_time)
+        return _mcp_get_http(
+            ctx.deps.log_file,
+            test_id,
+            ctx.deps.test_name,
+            start_time or ctx.deps.start_time,
+            end_time or ctx.deps.end_time,
+        )
 
     @agent.tool
     def get_app_log_events_for_test(
@@ -88,6 +97,12 @@ def build_app_log_analyst_agent(
         end_time: str | None = None,
     ) -> dict[str, Any]:
         """Return all app log events attributed to test_id."""
-        return _mcp_get_events(ctx.deps.log_file, test_id, start_time, end_time)
+        return _mcp_get_events(
+            ctx.deps.log_file,
+            test_id,
+            ctx.deps.test_name,
+            start_time or ctx.deps.start_time,
+            end_time or ctx.deps.end_time,
+        )
 
     return agent

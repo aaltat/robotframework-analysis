@@ -16,6 +16,7 @@ from robotframework_analysis.agent.playwright_log_analyst import (
     build_playwright_analyst_agent,
 )
 from robotframework_analysis.agent.screenshot_analyst import build_screenshot_analyst_agent
+from robotframework_analysis.mcp.app_log.file_selector import find_app_log_for_test
 
 
 @dataclass
@@ -24,7 +25,7 @@ class DelegateContext:
 
     output_xml: str
     playwright_log: str | None = None
-    app_log: str | None = None
+    app_log_dir: str | None = None
 
 
 _SYSTEM_PROMPT = """\
@@ -256,11 +257,11 @@ async def analyze_app_log_failures(
         rf_error_groups_json: The full JSON string returned by
             ``analyze_failures``, containing error groups with ``test_id``.
     """
-    app_log_file = ctx.deps.app_log
-    if not app_log_file:
-        logger.info("analyze_app_log_failures: no app log configured")
+    app_log_dir = ctx.deps.app_log_dir
+    if not app_log_dir:
+        logger.info("analyze_app_log_failures: no app log directory configured")
         return "[]"
-    logger.info("analyze_app_log_failures called: log_file=%s", app_log_file)
+    logger.info("analyze_app_log_failures called: app_log_dir=%s", app_log_dir)
     try:
         rf_report = json.loads(rf_error_groups_json)
         groups = rf_report.get("error_groups", [])
@@ -272,7 +273,12 @@ async def analyze_app_log_failures(
     results = []
     for group in groups:
         test_id = group.get("test_id", "")
+        start_time_str = group.get("test_start_time", "")
+        end_time_str = group.get("test_end_time", "")
         representative = group.get("representative_test", f"group {group.get('group_id', '?')}")
+        # Resolve test_name from the first test in the group
+        representative_test: dict[str, object] = (group.get("tests") or [{}])[0]
+        test_name: str = group.get("test_name") or representative_test.get("test_name") or ""  # type: ignore[assignment]
         if not test_id:
             logger.warning(
                 "analyze_app_log_failures: skipping group '%s' — test_id missing in RF report",
@@ -288,13 +294,52 @@ async def analyze_app_log_failures(
                 )
             )
             continue
+
+        from datetime import UTC, datetime  # noqa: PLC0415
+
+        def _parse_dt(s: str) -> datetime | None:
+            try:
+                return datetime.fromisoformat(s).replace(tzinfo=UTC) if s else None
+            except ValueError:
+                return None
+
+        start_dt = _parse_dt(start_time_str)
+        end_dt = _parse_dt(end_time_str)
+
+        log_file = find_app_log_for_test(Path(app_log_dir), test_id, start_dt, end_dt, test_name)
+        if log_file is None:
+            logger.info(
+                "analyze_app_log_failures: no log file found for group '%s' (test_id=%s)",
+                representative,
+                test_id,
+            )
+            results.append(
+                json.dumps(
+                    {
+                        "test_id": test_id,
+                        "confidence": "no_evidence",
+                        "summary": "No app log file found for this test (Rule 3)",
+                    }
+                )
+            )
+            continue
+
         logger.info(
-            "analyze_app_log_failures: analysing %s (test_id=%s)",
+            "analyze_app_log_failures: analysing %s (test_id=%s) log=%s",
             representative,
             test_id,
+            log_file.name,
         )
         prompt = f"Analyse app-level failures for test_id={test_id}."
-        group_result = await agent.run(prompt, deps=AppLogAnalystContext(log_file=app_log_file))
+        group_result = await agent.run(
+            prompt,
+            deps=AppLogAnalystContext(
+                log_file=str(log_file),
+                start_time=start_time_str or None,
+                end_time=end_time_str or None,
+                test_name=test_name,
+            ),
+        )
         results.append(group_result.output)
 
     return json.dumps(results)

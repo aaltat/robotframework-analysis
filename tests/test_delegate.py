@@ -17,7 +17,7 @@ from robotframework_analysis.agent.delegate import (
 def _make_mock_ctx(
     output_xml: str = "/tmp/output.xml",
     playwright_log: str | None = "playwright-log.txt",
-    app_log: str | None = "/tmp/test-app.log",
+    app_log_dir: str | None = "/tmp/test-app-logs",
 ) -> object:
     """Return a minimal stand-in for RunContext with pre-configured deps."""
 
@@ -25,7 +25,7 @@ def _make_mock_ctx(
         deps = DelegateContext(
             output_xml=output_xml,
             playwright_log=playwright_log,
-            app_log=app_log,
+            app_log_dir=app_log_dir,
         )
 
     return _Ctx()
@@ -204,8 +204,8 @@ def test_analyze_app_log_failures_returns_empty_on_bad_json() -> None:
 
 
 def test_analyze_app_log_failures_returns_empty_when_no_log_configured() -> None:
-    """When no app log is in deps, return '[]' without calling LLM."""
+    """When no app log dir is in deps, return '[]' without calling LLM."""
     result_json = asyncio.run(
-        analyze_app_log_failures(_make_mock_ctx(app_log=None), _rf_report([]))  # type: ignore[arg-type]
+        analyze_app_log_failures(_make_mock_ctx(app_log_dir=None), _rf_report([]))  # type: ignore[arg-type]
     )
     assert result_json == "[]"

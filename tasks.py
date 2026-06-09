@@ -32,18 +32,13 @@ def atest_example(ctx: Context) -> None:
     ctx.run("robot -L debug -d results example.robot")
 
 
-@task(
-    help={
-        "artifact_url": "GitHub Actions artifact URL to download and analyze.",
-        "output": "Extraction destination directory.",
-    }
-)
-def download_artifact(
+@task
+def download(
     ctx: Context,
     artifact_url: str,
     output: str = ".robotframework_analysis",
 ) -> None:
-    """Run the artifact downloader via rfanalysis analyze."""
+    """Run the artifact downloader via rfanalysis download."""
     dotenv.load_dotenv()
     destination = Path(output)
     shutil.rmtree(destination, ignore_errors=True)
@@ -52,9 +47,32 @@ def download_artifact(
         shlex.quote(sys.executable),
         "-m",
         "robotframework_analysis.cli",
-        "analyze",
+        "download",
         shlex.quote(artifact_url),
         "--output",
         shlex.quote(str(destination)),
     ]
+    ctx.run(" ".join(command_parts))
+
+@task
+def analyze(
+    ctx: Context,
+    output_xml: str,
+    playwright_log: str | None = None,
+    app_log: str | None = None,
+) -> None:
+    """Run the analysis agent via rfanalysis analyze."""
+    dotenv.load_dotenv()
+
+    command_parts = [
+        shlex.quote(sys.executable),
+        "-m",
+        "robotframework_analysis.cli",
+        "analyze",
+        shlex.quote(output_xml),
+    ]
+    if playwright_log:
+        command_parts.extend(["--playwright-log", shlex.quote(playwright_log)])
+    if app_log:
+        command_parts.extend(["--app-log", shlex.quote(app_log)])
     ctx.run(" ".join(command_parts))

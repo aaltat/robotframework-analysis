@@ -367,10 +367,35 @@ def _suite_teardown_events(all_events: list[AppLogEvent], suite_id: str) -> list
     return teardown
 
 
+def _find_test_boundaries(
+    all_events: list[AppLogEvent],
+    test_id: str,
+    test_name: str,
+) -> tuple[int | None, int | None]:
+    """Return (start_idx, end_idx) for the test, matching by id then by name."""
+    start_idx: int | None = None
+    end_idx: int | None = None
+    for i, e in enumerate(all_events):
+        if isinstance(e, StartTestEvent) and e.id == test_id:
+            start_idx = i
+        if isinstance(e, EndTestEvent) and e.id == test_id:
+            end_idx = i
+
+    if start_idx is None and test_name:
+        for i, e in enumerate(all_events):
+            if isinstance(e, StartTestEvent) and e.name == test_name:
+                start_idx = i
+            if isinstance(e, EndTestEvent) and e.name == test_name:
+                end_idx = i
+
+    return start_idx, end_idx
+
+
 def filter_events_for_test(
     all_events: list[AppLogEvent],
     *,
     test_id: str,
+    test_name: str = "",
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> FilterResult:
@@ -380,19 +405,14 @@ def filter_events_for_test(
     active test via ``start_test``/``end_test`` pairs.  Always prepends suite
     setup events and appends suite teardown events (Suite Context Inclusion).
 
-    Falls back to *start_time*/*end_time* window if no matching lifecycle pair
-    is found (App Log Time-Range Fallback).
+    Lookup order per App Log State Machine:
+    1. Match by ``test_id`` (exact RF hierarchical ID).
+    2. If no match, match by ``test_name`` (covers pabot merged-ID mismatch).
+    3. Fall back to *start_time*/*end_time* window (App Log Time-Range Fallback).
     """
     server_started, total = _build_health(all_events)
 
-    # --- Find the start_test / end_test boundaries for this test_id ---
-    start_idx: int | None = None
-    end_idx: int | None = None
-    for i, e in enumerate(all_events):
-        if isinstance(e, StartTestEvent) and e.id == test_id:
-            start_idx = i
-        if isinstance(e, EndTestEvent) and e.id == test_id:
-            end_idx = i
+    start_idx, end_idx = _find_test_boundaries(all_events, test_id, test_name)
 
     if start_idx is None:
         # Time-range fallback
@@ -434,6 +454,7 @@ def filter_http_for_test(
     all_events: list[AppLogEvent],
     *,
     test_id: str,
+    test_name: str = "",
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> FilterResult:
@@ -444,7 +465,7 @@ def filter_http_for_test(
     preserved on the result.
     """
     full = filter_events_for_test(
-        all_events, test_id=test_id, start_time=start_time, end_time=end_time
+        all_events, test_id=test_id, test_name=test_name, start_time=start_time, end_time=end_time
     )
     http_only = cast("list[AppLogEvent]", [e for e in full.events if isinstance(e, HttpEvent)])
     return FilterResult(

@@ -164,6 +164,7 @@ def _parse_optional_time(value: str | None) -> datetime | None:
 def get_app_log_http_for_test(
     log_file: str,
     test_id: str,
+    test_name: str = "",
     start_time: str | None = None,
     end_time: str | None = None,
 ) -> dict[str, Any]:
@@ -175,8 +176,10 @@ def get_app_log_http_for_test(
     Args:
         log_file: Absolute or cwd-relative path to the test-app NDJSON log.
         test_id: Robot Framework test ID (e.g. ``s1-s1-s1-t5``).
-        start_time: ISO 8601 UTC fallback window start (used when test_id is
-            not found in lifecycle events).
+        test_name: Human-readable test name; used as a fallback when the
+            worker-assigned ID in the log differs from the merged output.xml ID.
+        start_time: ISO 8601 UTC fallback window start (used when neither
+            test_id nor test_name is found in lifecycle events).
         end_time: ISO 8601 UTC fallback window end.
 
     Returns:
@@ -188,6 +191,7 @@ def get_app_log_http_for_test(
     result = filter_http_for_test(
         all_events,
         test_id=test_id,
+        test_name=test_name,
         start_time=_parse_optional_time(start_time),
         end_time=_parse_optional_time(end_time),
     )
@@ -198,6 +202,7 @@ def get_app_log_http_for_test(
 def get_app_log_events_for_test(
     log_file: str,
     test_id: str,
+    test_name: str = "",
     start_time: str | None = None,
     end_time: str | None = None,
 ) -> dict[str, Any]:
@@ -210,6 +215,8 @@ def get_app_log_events_for_test(
     Args:
         log_file: Absolute or cwd-relative path to the test-app NDJSON log.
         test_id: Robot Framework test ID (e.g. ``s1-s1-s1-t5``).
+        test_name: Human-readable test name; used as a fallback when the
+            worker-assigned ID in the log differs from the merged output.xml ID.
         start_time: ISO 8601 UTC fallback window start.
         end_time: ISO 8601 UTC fallback window end.
 
@@ -222,6 +229,7 @@ def get_app_log_events_for_test(
     result = filter_events_for_test(
         all_events,
         test_id=test_id,
+        test_name=test_name,
         start_time=_parse_optional_time(start_time),
         end_time=_parse_optional_time(end_time),
     )
