@@ -54,6 +54,7 @@ def download(
     ]
     ctx.run(" ".join(command_parts))
 
+
 @task
 def analyze(
     ctx: Context,
