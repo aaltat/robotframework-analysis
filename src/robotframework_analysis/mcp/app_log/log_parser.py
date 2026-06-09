@@ -198,7 +198,7 @@ def _parse_line(raw: str) -> AppLogEvent | None:  # noqa: C901, PLR0911
             timestamp=ts,
             method=d.get("method", ""),
             url=d.get("url", ""),
-            status=int(d.get("status", 0)),
+            status=int(d.get("status") or 0),
             content_length=int(cl) if cl is not None else None,
             response_time_ms=float(d.get("responseTimeMs", 0.0)),
             raw=raw,
