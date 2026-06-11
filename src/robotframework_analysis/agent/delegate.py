@@ -59,27 +59,18 @@ File paths are pre-configured — do NOT pass file path arguments to any tool.
 
 logger = logging.getLogger("rf_analyst_orchestrator_agent")
 
-delegate_agent: Agent[DelegateContext, str] = Agent(
-    "ollama:gemma4:e4b",
-    system_prompt=_SYSTEM_PROMPT,
-    deps_type=DelegateContext,
-)
+_DEFAULT_MODEL = "ollama:gemma4:e4b"
 
 
-@delegate_agent.tool
-async def analyze_failures(ctx: RunContext[DelegateContext]) -> str:
-    """Analyse test results from the pre-configured Robot Framework output.xml."""
-    output_xml = ctx.deps.output_xml
-    logger.info("analyze_failures called: output_xml=%s", output_xml)
-    agent = build_analysis_agent()
-    result = await agent.run(f"Analyze the Robot Framework test results from: {output_xml}")
-    return result.output
+# ---------------------------------------------------------------------------
+# Module-level implementation functions — importable by tests
+# ---------------------------------------------------------------------------
 
 
-@delegate_agent.tool
-async def analyze_playwright_failures(
+async def _analyze_playwright_failures(
     ctx: RunContext[DelegateContext],
     rf_error_groups_json: str,
+    model: str,
 ) -> str:
     """Analyse browser-level evidence for each RF error group.
 
@@ -90,6 +81,7 @@ async def analyze_playwright_failures(
         rf_error_groups_json: The full JSON string returned by
             ``analyze_failures``, containing error groups with
             ``test_id``, ``test_start_time``, and ``test_end_time``.
+        model: Pydantic-AI model string to use for the sub-agent.
     """
     playwright_log_file = ctx.deps.playwright_log
     if not playwright_log_file:
@@ -103,7 +95,7 @@ async def analyze_playwright_failures(
         logger.warning("analyze_playwright_failures: could not parse rf_error_groups_json")
         return "[]"
 
-    agent = build_playwright_analyst_agent()
+    agent = build_playwright_analyst_agent(model)
     results = []
     for group in groups:
         test_id = group.get("test_id", "")
@@ -149,10 +141,10 @@ async def analyze_playwright_failures(
     return json.dumps(results)
 
 
-@delegate_agent.tool
-async def analyze_screenshot_failures(
+async def _analyze_screenshot_failures(
     ctx: RunContext[DelegateContext],
     rf_error_groups_json: str,
+    model: str,
 ) -> str:
     """Analyse screenshot evidence for each RF error group.
 
@@ -164,6 +156,7 @@ async def analyze_screenshot_failures(
         rf_error_groups_json: The full JSON string returned by
             ``analyze_failures``, containing error groups with
             ``screenshot_paths``, ``suite_name``, and ``test_name``.
+        model: Pydantic-AI model string to use for the sub-agent.
     """
     output_xml = ctx.deps.output_xml
     logger.info("analyze_screenshot_failures called: output_xml=%s", output_xml)
@@ -174,7 +167,7 @@ async def analyze_screenshot_failures(
         logger.warning("analyze_screenshot_failures: could not parse rf_error_groups_json")
         return "[]"
 
-    agent = build_screenshot_analyst_agent()
+    agent = build_screenshot_analyst_agent(model)
     results = []
     for group in groups:
         test_id = group.get("test_id") or None
@@ -243,10 +236,10 @@ async def analyze_screenshot_failures(
     return json.dumps(results)
 
 
-@delegate_agent.tool
-async def analyze_app_log_failures(
+async def _analyze_app_log_failures(
     ctx: RunContext[DelegateContext],
     rf_error_groups_json: str,
+    model: str,
 ) -> str:
     """Analyse server-side HTTP evidence for each RF error group.
 
@@ -256,6 +249,7 @@ async def analyze_app_log_failures(
     Args:
         rf_error_groups_json: The full JSON string returned by
             ``analyze_failures``, containing error groups with ``test_id``.
+        model: Pydantic-AI model string to use for the sub-agent.
     """
     app_log_dir = ctx.deps.app_log_dir
     if not app_log_dir:
@@ -269,7 +263,7 @@ async def analyze_app_log_failures(
         logger.warning("analyze_app_log_failures: could not parse rf_error_groups_json")
         return "[]"
 
-    agent = build_app_log_analyst_agent()
+    agent = build_app_log_analyst_agent(model)
     results = []
     for group in groups:
         test_id = group.get("test_id", "")
@@ -343,3 +337,53 @@ async def analyze_app_log_failures(
         results.append(group_result.output)
 
     return json.dumps(results)
+
+
+# ---------------------------------------------------------------------------
+# Factory
+# ---------------------------------------------------------------------------
+
+
+def build_delegate_agent(model: str = _DEFAULT_MODEL) -> Agent[DelegateContext, str]:
+    """Create the orchestrator delegate agent with the given model."""
+    agent: Agent[DelegateContext, str] = Agent(
+        model,
+        system_prompt=_SYSTEM_PROMPT,
+        deps_type=DelegateContext,
+    )
+
+    @agent.tool
+    async def analyze_failures(ctx: RunContext[DelegateContext]) -> str:
+        """Analyse test results from the pre-configured Robot Framework output.xml."""
+        output_xml = ctx.deps.output_xml
+        logger.info("analyze_failures called: output_xml=%s", output_xml)
+        result = await build_analysis_agent(model).run(
+            f"Analyze the Robot Framework test results from: {output_xml}"
+        )
+        return result.output
+
+    @agent.tool
+    async def analyze_playwright_failures(
+        ctx: RunContext[DelegateContext],
+        rf_error_groups_json: str,
+    ) -> str:
+        """Analyse browser-level evidence for each RF error group."""
+        return await _analyze_playwright_failures(ctx, rf_error_groups_json, model)
+
+    @agent.tool
+    async def analyze_screenshot_failures(
+        ctx: RunContext[DelegateContext],
+        rf_error_groups_json: str,
+    ) -> str:
+        """Analyse screenshot evidence for each RF error group."""
+        return await _analyze_screenshot_failures(ctx, rf_error_groups_json, model)
+
+    @agent.tool
+    async def analyze_app_log_failures(
+        ctx: RunContext[DelegateContext],
+        rf_error_groups_json: str,
+    ) -> str:
+        """Analyse server-side HTTP evidence for each RF error group."""
+        return await _analyze_app_log_failures(ctx, rf_error_groups_json, model)
+
+    return agent

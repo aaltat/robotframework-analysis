@@ -6,11 +6,12 @@ import asyncio
 import json
 
 from robotframework_analysis.agent.delegate import (
+    _DEFAULT_MODEL,
     _SYSTEM_PROMPT,
     DelegateContext,
-    analyze_app_log_failures,
-    analyze_playwright_failures,
-    analyze_screenshot_failures,
+    _analyze_app_log_failures,
+    _analyze_playwright_failures,
+    _analyze_screenshot_failures,
 )
 
 
@@ -69,7 +70,9 @@ def test_system_prompt_mentions_confidence() -> None:
 def test_analyze_playwright_failures_returns_empty_when_no_log_configured() -> None:
     """When no playwright log is in deps, return '[]' without calling LLM."""
     result_json = asyncio.run(
-        analyze_playwright_failures(_make_mock_ctx(playwright_log=None), _rf_report([]))  # type: ignore[arg-type]
+        _analyze_playwright_failures(
+            _make_mock_ctx(playwright_log=None), _rf_report([]), _DEFAULT_MODEL
+        )  # type: ignore[arg-type]
     )
     assert result_json == "[]"
 
@@ -86,7 +89,7 @@ def test_analyze_playwright_failures_skips_group_when_test_id_empty_string() -> 
         }
     ]
     result_json = asyncio.run(
-        analyze_playwright_failures(_make_mock_ctx(), _rf_report(groups))  # type: ignore[arg-type]
+        _analyze_playwright_failures(_make_mock_ctx(), _rf_report(groups), _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     results = json.loads(result_json)
     item = json.loads(results[0])
@@ -96,7 +99,7 @@ def test_analyze_playwright_failures_skips_group_when_test_id_empty_string() -> 
 
 def test_analyze_playwright_failures_returns_empty_on_bad_json() -> None:
     result_json = asyncio.run(
-        analyze_playwright_failures(_make_mock_ctx(), "not json")  # type: ignore[arg-type]
+        _analyze_playwright_failures(_make_mock_ctx(), "not json", _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     assert result_json == "[]"
 
@@ -111,7 +114,7 @@ def test_analyze_playwright_failures_skips_group_when_times_missing() -> None:
         }
     ]
     result_json = asyncio.run(
-        analyze_playwright_failures(_make_mock_ctx(), _rf_report(groups))  # type: ignore[arg-type]
+        _analyze_playwright_failures(_make_mock_ctx(), _rf_report(groups), _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     results = json.loads(result_json)
     assert results == []
@@ -135,7 +138,7 @@ def test_analyze_screenshot_failures_skips_group_when_no_screenshots() -> None:
         }
     ]
     result_json = asyncio.run(
-        analyze_screenshot_failures(_make_mock_ctx(), _rf_report(groups))  # type: ignore[arg-type]
+        _analyze_screenshot_failures(_make_mock_ctx(), _rf_report(groups), _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     results = json.loads(result_json)
     assert len(results) == 1
@@ -158,7 +161,7 @@ def test_analyze_screenshot_failures_skips_group_when_screenshots_key_missing() 
         }
     ]
     result_json = asyncio.run(
-        analyze_screenshot_failures(_make_mock_ctx(), _rf_report(groups))  # type: ignore[arg-type]
+        _analyze_screenshot_failures(_make_mock_ctx(), _rf_report(groups), _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     results = json.loads(result_json)
     item = json.loads(results[0])
@@ -168,7 +171,7 @@ def test_analyze_screenshot_failures_skips_group_when_screenshots_key_missing() 
 
 def test_analyze_screenshot_failures_returns_empty_on_bad_json() -> None:
     result_json = asyncio.run(
-        analyze_screenshot_failures(_make_mock_ctx(), "not json")  # type: ignore[arg-type]
+        _analyze_screenshot_failures(_make_mock_ctx(), "not json", _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     assert result_json == "[]"
 
@@ -187,7 +190,7 @@ def test_analyze_app_log_failures_skips_group_when_test_id_missing() -> None:
         }
     ]
     result_json = asyncio.run(
-        analyze_app_log_failures(_make_mock_ctx(), _rf_report(groups))  # type: ignore[arg-type]
+        _analyze_app_log_failures(_make_mock_ctx(), _rf_report(groups), _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     results = json.loads(result_json)
     assert len(results) == 1
@@ -198,7 +201,7 @@ def test_analyze_app_log_failures_skips_group_when_test_id_missing() -> None:
 
 def test_analyze_app_log_failures_returns_empty_on_bad_json() -> None:
     result_json = asyncio.run(
-        analyze_app_log_failures(_make_mock_ctx(), "not json")  # type: ignore[arg-type]
+        _analyze_app_log_failures(_make_mock_ctx(), "not json", _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     assert result_json == "[]"
 
@@ -206,6 +209,6 @@ def test_analyze_app_log_failures_returns_empty_on_bad_json() -> None:
 def test_analyze_app_log_failures_returns_empty_when_no_log_configured() -> None:
     """When no app log dir is in deps, return '[]' without calling LLM."""
     result_json = asyncio.run(
-        analyze_app_log_failures(_make_mock_ctx(app_log_dir=None), _rf_report([]))  # type: ignore[arg-type]
+        _analyze_app_log_failures(_make_mock_ctx(app_log_dir=None), _rf_report([]), _DEFAULT_MODEL)  # type: ignore[arg-type]
     )
     assert result_json == "[]"

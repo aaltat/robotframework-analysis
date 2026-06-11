@@ -14,15 +14,18 @@ def _run_delegate_with_mock(
     playwright_log: str | None,
     app_log: str | None = None,
 ) -> tuple[str, object]:
-    """Call _run_delegate with a mocked delegate_agent; return (prompt, deps)."""
+    """Call _run_delegate with a mocked build_delegate_agent; return (prompt, deps)."""
     mock_result = MagicMock()
     mock_result.output = "report"
+    mock_agent = MagicMock()
+    mock_agent.run_sync.return_value = mock_result
 
-    with patch("robotframework_analysis.agent.delegate.delegate_agent") as mock_agent:
-        mock_agent.run_sync.return_value = mock_result
+    with patch(
+        "robotframework_analysis.agent.delegate.build_delegate_agent", return_value=mock_agent
+    ):
         from robotframework_analysis.cli import _run_delegate
 
-        _run_delegate(output_xml, playwright_log, app_log)
+        _run_delegate(output_xml, playwright_log, app_log, None)
         prompt = mock_agent.run_sync.call_args[0][0]
         deps = mock_agent.run_sync.call_args.kwargs.get("deps")
         return prompt, deps

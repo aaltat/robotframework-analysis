@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 from pathlib import Path
 
 from robotframework_analysis.artifacts.fetcher import fetch_artifact_bundle
@@ -37,6 +38,14 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to the folder containing Browser library test-app NDJSON log files.",
     )
+    analyze.add_argument(
+        "--model",
+        default=None,
+        help=(
+            "Pydantic-AI model string (e.g. 'openai:gpt-4o'). "
+            "Overrides RF_ANALYSIS_MODEL env var. Defaults to 'ollama:gemma4:e4b'."
+        ),
+    )
     return parser
 
 
@@ -50,10 +59,16 @@ async def _run_analyze(artifact_url: str, output: Path | None = None) -> int:
     return 0
 
 
-def _run_delegate(output_xml: str, playwright_log: str | None, app_log: str | None) -> int:
+def _run_delegate(
+    output_xml: str,
+    playwright_log: str | None,
+    app_log: str | None,
+    model: str | None,
+) -> int:
     from robotframework_analysis.agent.delegate import (  # noqa: PLC0415
+        _DEFAULT_MODEL,
         DelegateContext,
-        delegate_agent,
+        build_delegate_agent,
     )
 
     logging.basicConfig(
@@ -70,6 +85,10 @@ def _run_delegate(output_xml: str, playwright_log: str | None, app_log: str | No
         playwright_log=playwright_log_abs,
         app_log_dir=app_log_dir_abs,
     )
+
+    resolved_model = model or os.environ.get("RF_ANALYSIS_MODEL") or _DEFAULT_MODEL
+    logger.info("Using model: %s", resolved_model)
+    delegate_agent = build_delegate_agent(resolved_model)
 
     logger.info("Starting failure analysis for: %s", output_xml_abs)
     prompt = "Analyze the Robot Framework test failures."
@@ -90,7 +109,7 @@ def main() -> int:
         return asyncio.run(_run_analyze(args.artifact_url, args.output))
 
     if args.command == "analyze":
-        return _run_delegate(args.output_xml, args.playwright_log, args.app_log)
+        return _run_delegate(args.output_xml, args.playwright_log, args.app_log, args.model)
 
     parser.error(f"Unsupported command: {args.command}")
     return 2
